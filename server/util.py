@@ -31,6 +31,7 @@ class Values:
         self.backup_folder_name='old'
 
         self.last_time={"Dark":4} # {"user":int}
+        self.listen_for=[]
         # self.last_all_time=0
 
 

