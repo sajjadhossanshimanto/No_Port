@@ -140,7 +140,7 @@ def backup(file_path):
     root = join(root, bf_name)
     file = join(root, file)
     
-    drive.copy(ori_file_id, file)
+    drive.copy_file(ori_file_id, file)
     ori_file.Delete()# permanent delete
 
 def move_file(file_path):

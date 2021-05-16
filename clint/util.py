@@ -1,5 +1,4 @@
 #%%
-import atexit
 import json
 from json.decoder import JSONDecodeError
 import os
