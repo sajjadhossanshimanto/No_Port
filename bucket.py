@@ -76,6 +76,7 @@ def token_manager():
 
     knocked=False
     while 1:
+        tokens.put(prepare(get_token()))
         if tokens.full():
             tokens.get()
             if not knocked:
@@ -86,7 +87,6 @@ def token_manager():
                 )
                 knocked=True
         
-        tokens.put(prepare(get_token()))
         print(f"need more {MYService.exposed_left_size*interval_m} minutes")
         # sleep(interval_s)
         sleep(interval_s if tokens.full() else 2)

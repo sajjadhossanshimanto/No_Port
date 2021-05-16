@@ -46,7 +46,7 @@ class net_manager:
     def wait(self):
         if not self.running:
             self.start()
-            sleep(2)# let the connection to be set
+            sleep(3)# let the connection to be set
 
         if not compiled and not self.connection.is_set():
             raise Net_Error('Can\'t connect to the internet....0_o')

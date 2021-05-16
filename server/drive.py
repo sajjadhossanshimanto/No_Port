@@ -22,7 +22,8 @@ except ImportError:
 
 secure_mod=True
 name=data_store.var.name
-del data_store
+bf_name=data_store.var.backup_folder_name
+# del data_store
 
 #%%
 class Drive_server(Drive):
@@ -127,19 +128,20 @@ class drive_file(Online):
         self.file.Upload()
 
     def delete(self):
-        self.file.Delete()#permanent delete
+        self.file.Delete()# permanent delete
 
 
-def backup(file_lst):# unused # useless stupid func
-    for i in file_lst:
-        with drive_file(i) as f:
-            data=f.read()
-        
-        root, file=split(i)
-        root=join(root, "old")
-        with drive_file(join(root, file)) as f:
-            f.write(data)
-            f.delete()
+def backup(file_path):
+    '''only applyable on host drive'''
+    ori_file=drive.get_file(file_path)
+    ori_file_id=ori_file['id']
+
+    root, file = split(file_path)
+    root = join(root, bf_name)
+    file = join(root, file)
+    
+    drive.copy(ori_file_id, file)
+    ori_file.Delete()# permanent delete
 
 def move_file(file_path):
     '''move files from source drive to host'''
@@ -156,7 +158,7 @@ def move_file(file_path):
         pre_file_id=pre_file[0]['id']
 
         root, pre_file=split(dst)
-        root = join(root, "old")
+        root = join(root, bf_name)
         
         drive.copy_file(pre_file_id, join(root, pre_file))
 
@@ -164,24 +166,6 @@ def move_file(file_path):
     file.Delete()
 
 
-
-
-vic=[]
-vic_path="whoisactive"
-def init_vic():
-    global vic
-    if secure_mod:
-        vic = drive.list_folder(join(vic_path, "old"))
-    else:
-        vic=drive.list_folder(vic_path)
-        backup(vic)
-
-def updae_active_vics():
-    lst = drive.list_folder(vic_path)
-    if lst:
-        vic.extend(lst)
-        backup(lst)
-        return True
 
 
 
