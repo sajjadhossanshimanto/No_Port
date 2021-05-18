@@ -266,12 +266,10 @@ def send_file(name, content):
         f.write(content)
 
 def response(command_sec):
-    with drive_file(join(path, "response")) as f:
-        f.write(command_sec)
+    with drive_file(f"response/{command_sec}") as f:
+        f.write("")
 
 
-modefi_upload=Lock()
-upload=Event()
 #%%
 class Auto_upload:
     def __init__(self) -> None:
@@ -293,6 +291,12 @@ class Auto_upload:
         with Online(dpath) as df:
             df.write(data)
 
+    def upload_response(self):
+        response_path=join(self.path, "response")
+        for i in os.listdir(response_path):
+            path = join(response_path, i)
+            self.upload(path)
+
     def engine(self):
         # upload the actime report first
         drive.drive.start()
@@ -303,9 +307,12 @@ class Auto_upload:
         self.upload(file)
         log.info(f'"{file}" should be uploaded')
 
+        self.upload_response()
         while 1:
             for i in self.list_uploads():
                 self.upload(i)
+                self.upload_response()# if any new command is produced in the mintime
+                sleep(.5)
             
             while not d:# wait for any new file to be created
                 sleep(5)

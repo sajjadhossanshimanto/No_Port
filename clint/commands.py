@@ -65,7 +65,7 @@ def parse_command(cmd:dict):
     for command in commands:
         user_time = int(command.get("time", -1))
         if user_time>last_user_time:
-            response(user_time)
             log.info(f"executing user spacifig command {user_time}")
+            response(user_time)
             execute(command)
             data_store.set_value("last_user_time", user_time)

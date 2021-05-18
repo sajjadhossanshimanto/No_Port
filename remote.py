@@ -1,13 +1,10 @@
 #%%
 from clint.network import Net_Error
 from logger import log
-log.debug('\n\n\n\nnew start..')
 
 from server.util import data_store
 import os
-from multiprocessing import Process
 from server.drive import validate_cred
-from multiprocessing.connection import Client
 from tui import home_page
 # from iamlaizy import reload_me
 # reload_me()

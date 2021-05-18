@@ -83,11 +83,19 @@ class drive_explorer(DE):
         return sorted(file_lst, key=lambda x:datetime.fromisoformat(
             (x["modifiedDate"].rstrip('Z'))), reverse=True)
 
-    def list_folder(self, path):
+    def list_folder(self, path, files_only=False):
+        '''
+            list all files and folders in the "path"
+            path:str = relative_path
+        '''
         path=join(self.prefix, path)
         _id = self.get_folder_id(path)
-        file_list = self.drive.ListFile({'q': f"'{_id}' in parents and trashed=false"}).GetList()
+        _q_str=f"'{_id}' in parents and trashed=false" + " and mimeType='application/octet-stream'" if files_only else ""
+        file_list = self.drive.ListFile({'q': _q_str}).GetList()
         return list(set(map(lambda x:x['title'], file_list)))
+
+    def list_files(self, path):
+        return self.list_folder(path, files_only=True)
 
     def copy_file(self, origin_file_id, copy_to):
         """Copy an existing file. this,,

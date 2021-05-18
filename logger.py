@@ -6,7 +6,6 @@ from logging.handlers import RotatingFileHandler
 import curses
 import __main__
 
-# from server.util import data_store
 
 log_folder="debugging"
 class CursesHandler(logging.StreamHandler):
@@ -32,9 +31,7 @@ class CursesHandler(logging.StreamHandler):
             self.handleError(record)
 
 
-# name=data_store.var.name
-name='no port'
-log = logging.getLogger(name)
+log = logging.getLogger("debug code")
 log.setLevel(logging.DEBUG)
 log.disabled = getattr(sys, "frozen", False) # if compiled
 
@@ -51,7 +48,6 @@ c_handler.setLevel(logging.INFO)
 f_handler = RotatingFileHandler(f'{log_folder}/{file_name}', backupCount=4)
 f_handler.setLevel(logging.DEBUG)
 
-
 c_format = logging.Formatter('[%(filename)s] %(levelname)s -- %(message)s')
 c_handler.setFormatter(c_format)
 f_format = logging.Formatter('%(asctime)s - %(filename)s - %(lineno)s - %(levelname)s - %(message)s - %(pathname)s')
@@ -60,6 +56,7 @@ f_handler.setFormatter(f_format)
 log.addHandler(c_handler)
 log.addHandler(f_handler)
 
+log.debug('\n\n\nnew start..')
 
 def add_curses_handler(window):
     window.scrollok(True)
@@ -72,7 +69,6 @@ def add_curses_handler(window):
     log.addHandler(_handler)
 
 
-print()
 if __name__=="__main__":
     # import os
     # path=os.fspath('virus.log')
