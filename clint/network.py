@@ -103,5 +103,3 @@ if __name__=="__main__":
         print(counter)
         sleep(2)
     # log.info(net_time())
-#%%
-"kd".splitlines()

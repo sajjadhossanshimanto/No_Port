@@ -80,8 +80,10 @@ class drive_explorer(DE):
     def exists(self, path):
         '''last modified file is given the most priority'''
         file_lst = super().exists(path)
-        return sorted(file_lst, key=lambda x:datetime.fromisoformat(
-            (x["modifiedDate"].rstrip('Z'))), reverse=True)
+        return sorted(file_lst,
+            key=lambda x:datetime.fromisoformat((x["modifiedDate"].rstrip('Z'))),
+            reverse=True
+        )
 
     def list_folder(self, path, files_only=False):
         '''
@@ -130,6 +132,10 @@ class drive_file(Online):
         '''for now drive_file is only allowed for host drive'''
         self.file = drive.get_file(path)
     
+    def write(self, data):
+        data = formated_str(data)
+        return super().write(data)
+
     def rewrite(self, data):
         data = formated_str(data)
         self.file.SetContentString(data)
@@ -150,6 +156,7 @@ def backup(file_path):
     
     drive.copy_file(ori_file_id, file)
     ori_file.Delete()# permanent delete
+    log.info(f'file: {file_path} backuped')
 
 def move_file(file_path):
     '''move files from source drive to host'''
@@ -161,32 +168,26 @@ def move_file(file_path):
     })
 
     dst=join(name, file_path)
-    pre_file = drive.exists(dst)
-    if pre_file:# if previously a file exists of the same name and path backup it to old first
-        pre_file_id=pre_file[0]['id']
-
-        root, pre_file=split(dst)
-        root = join(root, bf_name)
-        
-        drive.copy_file(pre_file_id, join(root, pre_file))
+    # if previously a file exists of the path backup it to old first
+    if drive.exists(dst):
+        backup(dst)
 
     drive.copy_file(file['id'], dst)
     file.Delete()
-
-
-
+    log.info(f'file:"{file_path}" moved from source to host drive')
 
 
 def validate_cred():
     tokens=[]
-
     tokens.append(drive.drive.sick_token())
     tokens.append(source_drive.drive.sick_token())
     
     for token in tokens:
         if hasattr(token, "error"):
             log.error(error_des.get(token.get("error_description")), f"Unknown error -- {token['error_description']}")
+            log.critical('wrong creadintials..!')
             sys.exit()
+    log.info('all creadintial validated')
 
 
 

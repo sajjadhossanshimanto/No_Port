@@ -4,8 +4,8 @@ from logger import log
 
 from server.util import data_store
 import os
-from server.drive import validate_cred
-from tui import home_page
+from server.drive import validate_cred, drive_file
+from tui import home_page, remove_command
 # from iamlaizy import reload_me
 # reload_me()
 
@@ -31,3 +31,4 @@ reenabling secuire mode will clear the token
 #     os.startfile("start_bucket.vbs")
 
 home_page.show()
+

