@@ -132,6 +132,11 @@ class drive_file(Online):
         '''for now drive_file is only allowed for host drive'''
         self.file = drive.get_file(path)
     
+    def read(self):
+        data=super().read()
+        jtype=json.loads(data)
+        return jtype if not isinstance(jtype, str) else data# if data is str
+
     def write(self, data):
         data = formated_str(data)
         return super().write(data)

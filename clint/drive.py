@@ -202,7 +202,6 @@ class Online:
 
     def __exit__(self, *args):
         del self
-        # log.info(f"onexit online {args}")
 
 #%%
 class Offline:

