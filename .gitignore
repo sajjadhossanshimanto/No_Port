@@ -1,0 +1,11 @@
+/*
+**/__pycache__
+**/.vscode
+!server/
+!clint/
+
+*.*
+test.py
+!*.py
+!requirement.txt
+!.gitignore
