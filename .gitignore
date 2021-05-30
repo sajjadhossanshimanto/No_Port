@@ -6,6 +6,7 @@
 
 *.*
 test.py
+temp.py
 !*.py
 !requirement.txt
 !.gitignore

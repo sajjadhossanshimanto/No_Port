@@ -12,6 +12,7 @@ from clint.util import data_store
 from threading import Thread
 
 
+print(data_store.var.last_user_time)
 #%%
 Auto_upload()
 got_active()
@@ -33,4 +34,4 @@ while 1:
         pass
     else:
         parse_command(command)
-    time.sleep(5)
+    time.sleep(3)

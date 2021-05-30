@@ -1,5 +1,7 @@
 #%%
+from base64 import b64decode
 from os.path import dirname, join, split
+from server.crypto import decrypt
 from time import sleep
 import sys
 from .network import post
@@ -8,7 +10,7 @@ from urllib.parse import quote
 import json
 import os
 
-from server.util import data_store
+from server.util import data_store, str_to_json
 from logger import log
 from clint.drive import Online, drive_explorer as DE, Drive
 
@@ -21,9 +23,8 @@ except ImportError:
 
 
 secure_mod=True
-name=data_store.var.name
+app_name=data_store.var.app_name
 bf_name=data_store.var.backup_folder_name
-# del data_store
 
 #%%
 class Drive_server(Drive):
@@ -71,33 +72,40 @@ error_des={
     'Unauthorized':"wrong client_secret provided",
 }
 class drive_explorer(DE):
-    def __init__(self, prefix=name):
+    def __init__(self, prefix=app_name):
         '''each time you create a drive explorer instance creates a Drive_server instance 
             which leads to start a new 'drive' thread'''
         self.drive = Drive_server()
-        self.prefix = prefix
+        self.prefix = prefix.lower()
         
     def exists(self, path):
         '''last modified file is given the most priority'''
         file_lst = super().exists(path)
-        return sorted(file_lst,
-            key=lambda x:datetime.fromisoformat((x["modifiedDate"].rstrip('Z'))),
-            reverse=True
-        )
+        # return sorted(file_lst,
+        #     key=lambda x:datetime.fromisoformat((x["modifiedDate"].rstrip('Z'))),
+        #     reverse=True
+        # )
+        return file_lst
 
-    def list_folder(self, path, files_only=False):
+    def _contain(self, pid, name):
+        qstr=f"'{pid}' in parents and trashed=false and title = '{name}'"
+        return self.drive.ListFile({'q': qstr, "orderBy":"modifiedDate desc"}).GetList()
+
+    def list_folder(self, path, extra_q=""):
         '''
             list all files and folders in the "path"
             path:str = relative_path
         '''
-        path=join(self.prefix, path)
+        path = path.lower()# case insensitive
+        path=join(self.prefix, path) if not path.startswith(self.prefix) else path
         _id = self.get_folder_id(path)
-        _q_str=f"'{_id}' in parents and trashed=false" + " and mimeType='application/octet-stream'" if files_only else ""
+        
+        _q_str=f"'{_id}' in parents and trashed=false" + " " + extra_q
         file_list = self.drive.ListFile({'q': _q_str}).GetList()
         return list(set(map(lambda x:x['title'], file_list)))
 
     def list_files(self, path):
-        return self.list_folder(path, files_only=True)
+        return self.list_folder(path, "and mimeType != 'application/vnd.google-apps.folder'")
 
     def copy_file(self, origin_file_id, copy_to):
         """Copy an existing file. this,,
@@ -114,9 +122,17 @@ class drive_explorer(DE):
             fileId=origin_file_id, body=copied_file
         ).execute()
     
-    def get_file(self, path):
-        path=join(self.prefix, path)
-        return super().get_file(path)
+    def get_file(self, path, existing=True):
+        ''' raise exception if the file path not exist and optional argument 'existion' is True'''
+        path = path.lower()# case insensitive
+        path=join(self.prefix, path) if not path.startswith(self.prefix) else path
+        file_list = self.exists(path)
+        if not file_list and existing:
+            raise FileNotFoundError(f'failed to get existing file from drive path: {path}')
+        elif not file_list:
+            file_list = [self.create_file(path)]
+        
+        return file_list[0]
 
 drive = drive_explorer()
 drive.drive.engine.name="host drive"
@@ -128,14 +144,14 @@ source_drive.drive.engine.name="suorce drive"
 
 # %%
 class drive_file(Online):
-    def __init__(self, path):
+    def __init__(self, path, existing=False):
         '''for now drive_file is only allowed for host drive'''
-        self.file = drive.get_file(path)
+        self.file = drive.get_file(path, existing)
     
     def read(self):
         data=super().read()
-        jtype=json.loads(data)
-        return jtype if not isinstance(jtype, str) else data# if data is str
+        # there can be multible jsonable as rewrite is forbiden in clint drive
+        return str_to_json(data)
 
     def write(self, data):
         data = formated_str(data)
@@ -151,7 +167,7 @@ class drive_file(Online):
 
 
 def backup(file_path):
-    '''only applyable on host drive'''
+    '''only applyable for host drive. prefix is added by get_file function'''
     ori_file=drive.get_file(file_path)
     ori_file_id=ori_file['id']
 
@@ -161,10 +177,14 @@ def backup(file_path):
     
     drive.copy_file(ori_file_id, file)
     ori_file.Delete()# permanent delete
-    log.info(f'file: {file_path} backuped')
+    log.info(f'backuped file: "{file_path}"')
 
 def move_file(file_path):
     '''move files from source drive to host'''
+    if not source_drive.exists(file_path):
+        log.error(f'file: {file_path} not found to move.')
+        return
+    
     file=source_drive.get_file(file_path)
     file.InsertPermission({
         'type' : 'user',
@@ -172,14 +192,21 @@ def move_file(file_path):
         "role" : "writer",
     })
 
-    dst=join(name, file_path)
+    dst=join(app_name, file_path)
     # if previously a file exists of the path backup it to old first
     if drive.exists(dst):
-        backup(dst)
+        backup(dst)# prefix already added
 
     drive.copy_file(file['id'], dst)
     file.Delete()
-    log.info(f'file:"{file_path}" moved from source to host drive')
+    log.info(f'file of {file["fileSize"]/1024}kb moved to host drive: "{file_path}"')
+
+    # decrypt file contest
+    with drive_file(dst) as f:# existing
+        data=super(drive_file, f).read()
+        f.rewrite(decrypt(data))
+    
+    log.debug('file content decrypted')
 
 
 def validate_cred():

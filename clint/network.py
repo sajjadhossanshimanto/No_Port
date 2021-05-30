@@ -1,18 +1,17 @@
 #%%
-import json
-from json.decoder import JSONDecodeError
-from socket import create_connection, gethostbyname, gethostname
+from functools import lru_cache
+from socket import create_connection, gaierror, gethostbyname, gethostname
 from threading import Thread, Event
 import ntplib
-from time import sleep
+from time import sleep, time
 from requests import get as _get
 import sys
+import traceback
+from logger import log
 
 
 compiled=getattr(sys, "frozen", False) # check if app is being compiled by cx_freeze
 
-class Net_Error(Exception):
-    pass# recured by bucket
 
 #%%
 class net_manager:
@@ -27,8 +26,9 @@ class net_manager:
         while 1:
             try:
                 create_connection(("www.google.com", 80))
-            except:
+            except gaierror:# server refuse due to several request
                 self.connection.clear()
+                sleep(2)
             else:
                 self.connection.set()
             sleep(.5)
@@ -49,7 +49,11 @@ class net_manager:
             sleep(3)# let the connection to be set
 
         if not compiled and not self.connection.is_set():
-            raise Net_Error('Can\'t connect to the internet....0_o')
+            log.warning('waiting for network.')
+            log.info('please check your net connection.')
+            log.debug("network may not available or server refused to connect")
+            self.connection.wait()
+            log.info('net is back')
 
         self.connection.wait()
 net_check=net_manager()
@@ -65,7 +69,8 @@ def get(*args, **kwargs):
 
 
 ntp_c=ntplib.NTPClient()
-def net_time():
+# @lru_cache
+def time_diff():
     ntp_lists=[
         "time.google.com",
         "time1.google.com",
@@ -86,19 +91,49 @@ def net_time():
     ]
     for remo_ser in ntp_lists:
         try:
+            net_check.wait()
             remote=ntp_c.request(remo_ser)
-            return int(remote.tx_time)
-        except Exception as e:
-            print(e.with_traceback())
+        except ntplib.NTPException:# server refuse or net failure
+            pass
+        else:
+            log.debug(f'time server: {remo_ser}')
+            return int(remote.tx_time)-time()
+    raise Exception('no ntp server responded.')
+
+# def net_time():
+#     # but what is the user manually fix the time diff
+#     return time()+time_diff()
+
+class current_time:
+    def __get__(self, obj, obj_type=None):
+        if obj.counter>=5:# refresh every 5 times
+            diff=time_diff()
+            if int(diff)!=int(obj.diff):
+                log.warning(f'local clock time changed. {diff-obj.diff} sec')
+            obj.diff=diff
+            obj.counter=0
+
+        obj.counter+=1
+        return obj.diff+time()
+
+class Timer:
+    time=current_time()
+    def __init__(self) -> None:
+        self.diff=time_diff()
+        self.counter=0
     
+    def __call__(self):
+        return self.time
+
+net_time=Timer()
 
 if __name__=="__main__":
-    import time
+    # import time
     # from logger import log
     # safe_disk=net_manager()
     counter=0
     while 1:
-        net_time()
+        print(net_time())
         counter+=1
         print(counter)
         sleep(2)

@@ -34,14 +34,10 @@ def execute(command):
     log.debug(command)
 
     fun_name = command["func"]
-    user_time = int(command["time"])
     args = command.get("args", [])
     kwargs = command.get("kwargs", {})
 
-    with drive_file(f"response/{user_time}") as f:
-        f.write(user_time)
     log.info(f"function: {fun_name}")
-    
     func=all_command.get(fun_name)
     if not func:
         log.error(f'unlnown remote funtion: {fun_name}')
@@ -69,6 +65,10 @@ def parse_command(cmd:dict):
         user_time = int(command.get("time", -1))
         if user_time>last_user_time:
             log.info(f"executing user spacifig command {user_time}")
+            # must be done only for user spacific commands only
+            with drive_file(f"response/{user_time}") as f:
+                f.write(command["func"])
+            
             execute(command)
             data_store.set_value("last_user_time", user_time)
         

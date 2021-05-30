@@ -1,11 +1,31 @@
 #%%
-from clint.network import Net_Error
-from logger import log
-
-from server.util import data_store
+import sys
+import threading
+from traceback import format_exception
 import os
-from server.drive import validate_cred, drive_file
-from tui import home_page, remove_command
+import atexit
+
+def on_exception(etype, value, tb, e=sys.exit):
+    log.critical(f'{etype}: {value}')
+    log.debug("".join(format_exception(etype, value, tb)))
+    log.warning('exiting on exception.')
+    
+    atexit._run_exitfuncs()
+    os._exit()
+
+def thread_exception(args):
+    log.info(f'exception in {args.thread}')
+    on_exception(args.exc_type, args.exc_value, args.exc_traceback)
+
+sys.excepthook=on_exception
+threading.excepthook=thread_exception
+
+
+from logger import log
+from server.drive import drive_file, move_file, source_drive, validate_cred
+from server.util import data_store
+from tui import home_page
+
 # from iamlaizy import reload_me
 # reload_me()
 
@@ -29,6 +49,11 @@ reenabling secuire mode will clear the token
 #     # use os.startfile to start bucket 
 #     # but for that bucket needs to convert to exe
 #     os.startfile("start_bucket.vbs")
+
+# ensure command and token file is shared to source # must do
+# validate command file
+# ensure empty bin
+
 
 home_page.show()
 

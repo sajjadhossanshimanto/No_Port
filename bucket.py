@@ -12,7 +12,7 @@ from plyer import notification
 from rpyc import Service
 from rpyc.utils.server import ThreadedServer
 
-from clint.network import Net_Error, net_time
+from clint.network import net_time
 from server.drive import source_drive
 from server.util import data_store
 
@@ -35,12 +35,7 @@ def invesible():
 # invesible()
 
 def get_token():
-    while 1:
-        try:
-            return source_drive.drive.sick_token()
-        except Net_Error:
-            print('waiting for network')
-            sleep(5)
+    return source_drive.drive.sick_token()
     
 def prepare(token):
     return {
@@ -76,6 +71,7 @@ def token_manager():
 
     knocked=False
     while 1:
+        print(f"need more {MYService.exposed_left_size*interval_m} minutes")
         if tokens.full():
             tokens.get()
             if not knocked:
@@ -87,7 +83,6 @@ def token_manager():
                 knocked=True
         
         tokens.put(prepare(get_token()))
-        print(f"need more {MYService.exposed_left_size*interval_m} minutes")
         # sleep(interval_s)
         sleep(interval_s if tokens.full() else 2)
 

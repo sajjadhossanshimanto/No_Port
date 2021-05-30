@@ -50,7 +50,7 @@ f_handler.setLevel(logging.DEBUG)
 
 c_format = logging.Formatter('[%(filename)s] %(levelname)s -- %(message)s')
 c_handler.setFormatter(c_format)
-f_format = logging.Formatter('%(asctime)s - %(filename)s - %(lineno)s - %(levelname)s - %(message)s - %(pathname)s')
+f_format = logging.Formatter('%(asctime)s - %(filename)s - %(lineno)s - %(levelname)s -- %(message)s')
 f_handler.setFormatter(f_format)
 
 log.addHandler(c_handler)
