@@ -23,7 +23,7 @@ from .config.winstructure import char_to_int, convert_to_byte
 from hashlib import sha1, pbkdf2_hmac
 
 from configparser import RawConfigParser  # Python 3
-from util import data_store
+from ..util import data_store
 
 if sys.version_info[0]:
     python_version = sys.version_info[0]

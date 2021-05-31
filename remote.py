@@ -5,7 +5,7 @@ from traceback import format_exception
 import os
 import atexit
 
-def on_exception(etype, value, tb, e=sys.exit):
+def on_exception(etype, value, tb):
     log.critical(f'{etype}: {value}')
     log.debug("".join(format_exception(etype, value, tb)))
     log.warning('exiting on exception.')
@@ -22,7 +22,7 @@ threading.excepthook=thread_exception
 
 
 from logger import log
-from server.drive import drive_file, move_file, source_drive, validate_cred
+from server.drive import drive_file, move_file, source_drive, source_file, validate_cred
 from server.util import data_store
 from tui import home_page
 

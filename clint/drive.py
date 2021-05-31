@@ -308,10 +308,10 @@ class Auto_upload:
             f.write(encrypt(json.dumps(data)))
 
         while 1:
-            self.upload_response()
             for i in self.list_uploads():
                 self.upload(i)
                 sleep(.5)
+            self.upload_response()
             
             log.info('waiting for new files to be created')
             while not d:# wait for any new file to be created

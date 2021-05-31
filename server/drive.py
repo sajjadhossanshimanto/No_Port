@@ -165,6 +165,10 @@ class drive_file(Online):
     def delete(self):
         self.file.Delete()# permanent delete
 
+class source_file(drive_file):
+    def __init__(self, path, existing=True):
+        self.file = source_drive.get_file(path, existing)
+
 
 def backup(file_path):
     '''only applyable for host drive. prefix is added by get_file function'''
@@ -181,32 +185,24 @@ def backup(file_path):
 
 def move_file(file_path):
     '''move files from source drive to host'''
-    if not source_drive.exists(file_path):
+    file_count=len(source_drive.exists(file_path))
+    if not file_count:
         log.error(f'file: {file_path} not found to move.')
         return
     
-    file=source_drive.get_file(file_path)
-    file.InsertPermission({
-        'type' : 'user',
-        'value': host_email,
-        "role" : "writer",
-    })
-
+    log.info(f'moving {file_count} file to host drive: "{file_path}"')
     dst=join(app_name, file_path)
-    # if previously a file exists of the path backup it to old first
     if drive.exists(dst):
-        backup(dst)# prefix already added
-
-    drive.copy_file(file['id'], dst)
-    file.Delete()
-    log.info(f'file of {file["fileSize"]/1024}kb moved to host drive: "{file_path}"')
-
-    # decrypt file contest
-    with drive_file(dst) as f:# existing
-        data=super(drive_file, f).read()
-        f.rewrite(decrypt(data))
+        # if previously a file exists of the same path, backup it first
+        backup(dst)
     
-    log.debug('file content decrypted')
+    dst=drive_file(dst)# one file to store all decrypted contest
+    for i in range(file_count):
+        data=super(drive_file, dst).read()
+        dst.rewrite(decrypt(data))
+        log.debug(f'{i}/{file_count} file content decrypted')
+    
+    log.info('file moving operation is sucessfull.')
 
 
 def validate_cred():
