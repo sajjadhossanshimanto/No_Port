@@ -1,28 +1,27 @@
 #%%
+import atexit
+import curses
+import json
 import random
 import re
-import json
-from clint.network import net_time
-from threading import Lock, Thread
-import atexit
-from server.util import data_store
-from server.util import force_stop
-
-from server.drive import (backup, drive_file, source_drive, move_file, drive)
-import server.drive as _d
 import string
-from threading import Thread
-from time import sleep
-from functools import lru_cache
-from math import ceil
-import curses
 import sys
-from os.path import join, split
-from curses import textpad
 from collections import OrderedDict
 from collections.abc import Iterable
+from curses import textpad
+from functools import lru_cache
+from math import ceil
+from os.path import join, split
+from threading import Lock, Thread
+from time import sleep
+
+from clint.network import net_time
 from logger import add_curses_handler, log
 from rpyc import connect
+
+import .drive as _d
+from .drive import backup, drive, drive_file, move_file, source_drive
+from .util import data_store, force_stop
 
 # from iamlaizy import reload_me
 # reload_me()

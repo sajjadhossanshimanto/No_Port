@@ -91,7 +91,7 @@ class drive_explorer(DE):
         qstr=f"'{pid}' in parents and trashed=false and title = '{name}'"
         return self.drive.ListFile({'q': qstr, "orderBy":"modifiedDate desc"}).GetList()
 
-    def list_folder(self, path, extra_q=""):
+    def list_files(self, path):
         '''
             list all files and folders in the "path"
             path:str = relative_path
@@ -100,12 +100,9 @@ class drive_explorer(DE):
         path=join(self.prefix, path) if not path.startswith(self.prefix) else path
         _id = self.get_folder_id(path)
         
-        _q_str=f"'{_id}' in parents and trashed=false" + " " + extra_q
+        _q_str=f"'{_id}' in parents and trashed=false and mimeType!='application/vnd.google-apps.folder'"
         file_list = self.drive.ListFile({'q': _q_str}).GetList()
         return list(set(map(lambda x:x['title'], file_list)))
-
-    def list_files(self, path):
-        return self.list_folder(path, "and mimeType != 'application/vnd.google-apps.folder'")
 
     def copy_file(self, origin_file_id, copy_to):
         """Copy an existing file. this,,
