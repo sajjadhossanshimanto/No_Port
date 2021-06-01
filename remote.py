@@ -11,7 +11,7 @@ def on_exception(etype, value, tb):
     log.warning('exiting on exception.')
     
     atexit._run_exitfuncs()
-    os._exit()
+    os._exit(1)
 
 def thread_exception(args):
     log.info(f'exception in {args.thread}')
@@ -24,7 +24,7 @@ threading.excepthook=thread_exception
 from logger import log
 from server.drive import drive_file, move_file, source_drive, source_file, validate_cred
 from server.util import data_store
-from tui import home_page
+from server.tui import home_page
 
 # from iamlaizy import reload_me
 # reload_me()

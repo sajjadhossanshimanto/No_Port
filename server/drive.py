@@ -77,15 +77,6 @@ class drive_explorer(DE):
             which leads to start a new 'drive' thread'''
         self.drive = Drive_server()
         self.prefix = prefix.lower()
-        
-    def exists(self, path):
-        '''last modified file is given the most priority'''
-        file_lst = super().exists(path)
-        # return sorted(file_lst,
-        #     key=lambda x:datetime.fromisoformat((x["modifiedDate"].rstrip('Z'))),
-        #     reverse=True
-        # )
-        return file_lst
 
     def _contain(self, pid, name):
         qstr=f"'{pid}' in parents and trashed=false and title = '{name}'"
@@ -168,16 +159,17 @@ class source_file(drive_file):
 
 
 def backup(file_path):
-    '''only applyable for host drive. prefix is added by get_file function'''
-    ori_file=drive.get_file(file_path)
-    ori_file_id=ori_file['id']
+    '''backup all the relative files.
+     only applyable for host drive. prefix is added by get_file function'''
+    for ori_file in drive.exists(file_path):
+        ori_file_id=ori_file['id']
 
-    root, file = split(file_path)
-    root = join(root, bf_name)
-    file = join(root, file)
-    
-    drive.copy_file(ori_file_id, file)
-    ori_file.Delete()# permanent delete
+        root, file = split(file_path)
+        root = join(root, bf_name)
+        file = join(root, file)
+        
+        drive.copy_file(ori_file_id, file)
+        ori_file.Delete()# permanent delete
     log.info(f'backuped file: "{file_path}"')
 
 def move_file(file_path):
