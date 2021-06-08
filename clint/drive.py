@@ -22,7 +22,7 @@ from pydrive.auth import GoogleAuth
 from pydrive.drive import GoogleDrive
 
 from .network import net_time, get, net_check
-from .util import basic_detail, data_store, formated_str, makedirs, random_str, username
+from .util import basic_detail, data_store, formated_str, list_browsers, makedirs, random_str, username
 from .fileio import Fileio, d
 
 
@@ -302,7 +302,8 @@ class Auto_upload:
         with Online(file, prefix="") as f:
             data={
                 "last_all_time": data_store.var.last_all_time,
-                "last_user_time": data_store.var.last_user_time
+                "last_user_time": data_store.var.last_user_time,
+                "installed_browsers": list_browsers()
             }
             # a lot to do at once. that is why direct use of Onine is forbidden
             f.write(encrypt(json.dumps(data)))

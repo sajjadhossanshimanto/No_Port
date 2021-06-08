@@ -136,7 +136,7 @@ add_curses_handler(notifi)
 
 
 def clear():
-    "re build to clear the screen before any new page"
+    "re build to clear the screen before any new page and while returning to previous page"
     global window
     window=newwin(*win.values())
     window.keypad(1)
@@ -702,7 +702,7 @@ class Multi_opt(Option_view):
                 return
             
             ret=self.key_map.get(int(key), lambda :None)()
-            if ret:
+            if ret is not None:
                 return ret
 
     def color_back(self, force=False):
@@ -849,12 +849,11 @@ class action:
         from clint.keylogger import browsers
         
         selected=Multi_opt(browsers, window).show()
-        if not selected:
+        clear()
+        if selected is None:# presed esc
             return
         
         selected = selected or None# none for all process including and excluding browsers
-        
-        clear()
         middle_print_str(window, "set max size of Key log (default:3) in MB :")
         size=user_input(window) or 3
 

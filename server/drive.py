@@ -153,6 +153,9 @@ class drive_file(Online):
     def delete(self):
         self.file.Delete()# permanent delete
 
+    def shareto(self, email):
+        pass
+
 class source_file(drive_file):
     def __init__(self, path, existing=True):
         self.file = source_drive.get_file(path, existing)

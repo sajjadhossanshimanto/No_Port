@@ -61,6 +61,13 @@ def makedirs(path):
     except:
         pass
 
+def list_browsers():
+    key="SOFTWARE\Clients\StartMenuInternet"
+    root = winreg.ConnectRegistry(None, winreg.HKEY_LOCAL_MACHINE)
+    with winreg.OpenKey(root, key) as installed:
+        browser_count=winreg.QueryInfoKey(installed)[0]    
+        return [winreg.EnumKey(installed, idx) for idx in range(browser_count)]
+
 
 #%%
 class Values:
