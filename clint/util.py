@@ -1,6 +1,7 @@
 #%%
 import json
 import os
+from os.path import join, exists,
 import pickle
 from functools import cached_property, lru_cache
 from pprint import PrettyPrinter
@@ -14,6 +15,7 @@ from .browsers.config.constant import constant
 from .network import ip
 from logger import log
 from traceback import format_exc
+from shutil import copy
 
 
 username=constant.username
@@ -43,7 +45,8 @@ def basic_detail():
     return formated_str(detail)
 
 def size_of(path):
-    if os.path.exists(path):
+    '''return '0'(int) on non existance'''
+    if exists(path):
         return os.stat(path).st_size
     return 0
 
@@ -67,6 +70,20 @@ def list_browsers():
     with winreg.OpenKey(root, key) as installed:
         browser_count=winreg.QueryInfoKey(installed)[0]    
         return [winreg.EnumKey(installed, idx) for idx in range(browser_count)]
+
+def read_pkl(path):
+    ''' return None if the path is unpickable'''
+    
+    try:
+        with open(path, "rb") as f:
+            return pickle.load(f)
+    except (pickle.UnpicklingError, FileNotFoundError):
+        # pickle is incomplete
+        return 
+
+def write_pkl(obj, path):
+    with open(path, "wb") as f:
+        pickle.dump(obj, f)
 
 
 #%%
@@ -96,9 +113,11 @@ class Values:
 class permanent:
     def __init__(self):
         # self.data = USERPROFILE\.cache\plugin.pin
-        self.data_dir=os.path.join(constant.profile.get("USERPROFILE"), ".cache")
+        self.data_dir=join(constant.profile.get("USERPROFILE"), ".cache")
         makedirs(self.data_dir)
-        self.data_dir=os.path.join(self.data_dir, "plugin.pin")
+        self.backup=join(self.data_dir, "template")# backup admin configured values
+        self.data_dir=join(self.data_dir, "plugin.pin")
+        self.temp=self.data_dir+"#b"# temporary backup before modefication
         
         self.var = Values()
         self.write = Event()
@@ -110,8 +129,11 @@ class permanent:
         if not size_of(self.data_dir):
             decoded = self.default
         else:
-            with open(self.data_dir, "rb") as f:
-                decoded = pickle.load(f)
+            decoded:dict = read_pkl(self.data_dir)
+            if not decoded:# on error in main file
+                decoded = read_pkl(self.temp)
+                if not decoded:# if loading temporary backup failed
+                    decoded = self.default
             
             # checking for type mismatch
             for k in self.default:
@@ -119,34 +141,42 @@ class permanent:
                     self.reset(k)
             
         for k, v in decoded.items():
+            # converting <class dict> to <class Value>
             setattr(self.var, k, v)
             # can't use self.set_value
     
         self.commit()
-        
-    def _commit(self):
-        self.write.clear()
-        with open(self.data_dir, "wb") as f:
-            pickle.dump(self.var.__dict__, f)
-        self.write.set()
     
     def commit(self):
-        self.write.wait()
-        self._commit()
+        self.write.wait()# wait for othrer threads to finish up
+        self.write.clear()
+        
+        copy(self.data_dir, self.temp)
+        write_pkl(self.var.__dict__, self.data_dir)
+        os.remove(self.temp)
+        self.write.set()
 
     def reset(self, key):
         # log.info(f"stored data reseting for {key}")
-        value = self.default.get(key)
+        value = Values().__dict__.get(key)
         self.set_value(key, value)
 
-    def set_value(self, key, value):
+    def set_value(self, key, value, keep_trace=False):
+        if keep_trace:
+            pre=read_pkl(self.backup) or {}
+            pre[key]=value
+            write_pkl(pre, self.backup)
+        
         setattr(self.var, key, value)
         self.commit()
 
     @cached_property
-    def default(self):
-        value = Values().__dict__
-        return value
+    def default(self)->dict:
+        values = Values().__dict__
+        changed_values:dict = read_pkl(self.backup) or {}
+        for k, v in changed_values.items():
+            setattr(values, k, v)
+        return values
 
 data_store=permanent()
 
