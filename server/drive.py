@@ -122,6 +122,9 @@ class drive_explorer(DE):
         
         return file_list[0]
 
+    def trashed_files(self):
+        return bool(self.drive.ListFile({'q': "trashed=true"}).GetList())
+
 drive = drive_explorer()
 drive.drive.engine.name="host drive"
 
@@ -153,8 +156,16 @@ class drive_file(Online):
     def delete(self):
         self.file.Delete()# permanent delete
 
-    def shareto(self, email):
-        pass
+    def make_public(self):
+        # for per in self.file.GetPermissions():
+        #     if per["type"]=="anyone":
+        #         log.debug(f'file is already public: "{self.file["title"]}"')
+        #         return
+        
+        self.file.InsertPermission({
+            'type' : 'anyone',
+            "role" : "reader"
+        })
 
 class source_file(drive_file):
     def __init__(self, path, existing=True):

@@ -39,7 +39,8 @@ try:
     mkdir(log_folder)
 except:
     pass
-file_name=basename(__main__.__file__)
+report_file=__main__.__file__
+file_name=basename(report_file)
 file_name=file_name[:file_name.rfind('.')]
 file_name+='.log'
 

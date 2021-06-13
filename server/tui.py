@@ -23,9 +23,6 @@ from . import drive as _d
 from .drive import backup, drive, drive_file, move_file, source_drive
 from .util import data_store, force_stop
 
-# from iamlaizy import reload_me
-# reload_me()
-
 
 bf_name=data_store.var.backup_folder_name
 vic_path=data_store.var.vic_path
