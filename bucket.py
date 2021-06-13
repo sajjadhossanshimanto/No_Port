@@ -3,6 +3,7 @@ import os
 os.chdir(os.path.dirname(__file__))# need for relative imports
 
 import ctypes
+import sys
 from queue import Queue
 from threading import Thread
 from time import sleep
@@ -15,13 +16,17 @@ from rpyc.utils.server import ThreadedServer
 from clint.network import net_time
 from server.drive import source_drive
 from server.util import data_store
+from bucket_running import is_bucket_runnnig
 
 
 port=data_store.var.bucket_port
 interval_m=data_store.var.safety_interval# interval in minutes
+del data_store
+if is_bucket_runnnig():
+    sys.exit()
+
 interval_s=interval_m*60# interval in sec
 tokens = Queue()
-del data_store
 print(f'safety interval sated to {interval_m} minutes')
 
 
