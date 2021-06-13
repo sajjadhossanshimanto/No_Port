@@ -1,7 +1,7 @@
 #%%
 from functools import cached_property
 import os
-from json.decoder import JSONDecoder, WHITESPACE
+from json.decoder import JSONDecodeError, JSONDecoder, WHITESPACE
 from threading import Event
 from clint.util import permanent as _perm
 from logger import log
@@ -14,7 +14,7 @@ def str_to_json(s):
     ''' decode the first jsonable only. '''
     if not s:
         return s
-    log.debug(f'formating obj --> "{s}" ')
+    log.debug(f'formating obj --> ""{s}"" ')
 
     idx=_w(s, 0).end()
     if s[idx] not in '[{("':# for now numbers are not concedered
@@ -27,6 +27,26 @@ def str_to_json(s):
     
     return obj
 
+def validate_command_syntax(strio, start=0, remove=False):
+    '''currently only capable of removing extra obj inside dict'''
+    strio.seek(start)
+    try:
+        obj, length=decoder.scan_once(strio.read(), idx=0)
+        end=start+length
+    except JSONDecodeError as e:
+        end = validate_command_syntax(strio, e.pos, remove=True)
+    except StopIteration:
+        return strio.tell()
+
+    if remove:# remove obj-charecters from middle
+        strio.seek(end)
+        sufix=strio.read()# read suffix
+        strio.seek(start)
+        strio.truncate()# clear obj + suffix
+        strio.write(sufix)# write suffix
+
+    return end
+
 #%%
 def force_stop(_thread):
     if not _thread.is_alive():
@@ -38,6 +58,7 @@ def force_stop(_thread):
     if res > 1:
         ctypes.pythonapi.PyThreadState_SetAsyncExc(_id, 0)
         # log.info('Exception raise failure leads force_stop to fail')
+
 
 #%%
 class Values:
@@ -54,26 +75,15 @@ class Values:
         self.listen_for=[]
         # self.last_all_time=0
 
-
-
 #%%
 class permanent(_perm):
     def __init__(self):
+        super().__init__()
         self.data_dir=os.path.abspath("detail.bin")
-        self.var = Values()
-        self.write = Event()
-        self.write.set()
-
         self.setup()
 
     @cached_property
     def default(self):
         value = Values().__dict__
         return value
-
 data_store=permanent()
-
-
-# %%
-if __name__=="__main__":
-    pass

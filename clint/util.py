@@ -1,7 +1,7 @@
 #%%
 import json
 import os
-from os.path import join, exists,
+from os.path import join, exists
 import pickle
 from functools import cached_property, lru_cache
 from pprint import PrettyPrinter
@@ -123,11 +123,11 @@ class permanent:
         self.write = Event()
         self.write.set()
 
-        self.setup()
 
     def setup(self):
         if not size_of(self.data_dir):
             decoded = self.default
+            open(self.data_dir, "w").close()
         else:
             decoded:dict = read_pkl(self.data_dir)
             if not decoded:# on error in main file
@@ -179,6 +179,7 @@ class permanent:
         return values
 
 data_store=permanent()
+data_store.setup()
 
 
 # %%
