@@ -14,7 +14,7 @@ from server.network import post
 from server.util import data_store, str_to_json
 
 try:
-    from setting import host_rtoken, source_rtoken
+    from setting import host_rtoken, source_rtoken, client_id, client_secret
 except ImportError:
     raise Exception("Unsecure modification was made to setting")
 

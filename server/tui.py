@@ -19,7 +19,7 @@ from rpyc import connect
 
 from clint.network import net_time
 from logger import add_curses_handler, log
-from server. import drive as _d
+from server import drive as _d
 from server.drive import backup, drive, drive_file, move_file, source_drive
 from server.util import data_store, force_stop
 

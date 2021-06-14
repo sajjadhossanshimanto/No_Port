@@ -12,8 +12,9 @@ from logger import log, report_file
 def on_exception(etype, value, tb):
     full_tb=format_exception(etype, value, tb)
     
-    log.error(full_tb[-4].strip(" \n"))
-    log.critical(full_tb[-1].strip(" \n"))
+    # log.error(full_tb[-4].strip(" \n"))
+    # log.critical(full_tb[-1].strip(" \n"))
+    log.critical(f"{etype}: {value}")
     log.debug("".join(full_tb))
     log.warning('exiting on exception.')
     
@@ -52,13 +53,13 @@ clints list is shown from previous cache
 reenabling secuire mode will clear the token
 '''
 
-if not is_bucket_runnnig():
-    log.info("bucket is not running.")
-    task_startup()
-    if not is_admin():
-        log.info('reruning with admin permetion.')
-        sys.exit()
-    os.startfile(script_path)
+# if not is_bucket_runnnig():
+#     log.info("bucket is not running.")
+#     task_startup()
+#     if not is_admin():
+#         log.info('reruning with admin permetion.')
+#         sys.exit()
+#     os.startfile(f"server/{script_path}")
 
 # ensure command and token file is shared to source # must do
 for file in [data_store.var.token_file, data_store.var.command_file]:
@@ -67,7 +68,7 @@ for file in [data_store.var.token_file, data_store.var.command_file]:
 
 # validate command file
 with drive_file(data_store.var.command_file) as f:
-    s=StringIO(f.read())
+    s=StringIO(super(drive_file, f).read())
     validate_command_syntax(s)
     s.seek(0)
     f.rewrite(s.read())
