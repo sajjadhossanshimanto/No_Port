@@ -4,7 +4,7 @@ from clint.crypto import decrypt_aes, encrypt, encrypt_aes
 from threading import Lock, RLock
 import os
 from os.path import normpath
-from .util import formated_str
+from clint.util import formated_str
 from logger import log
 
 

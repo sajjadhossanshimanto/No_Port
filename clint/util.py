@@ -11,8 +11,8 @@ import ctypes
 import codecs
 import winreg
 
-from .browsers.config.constant import constant
-from .network import ip
+from clint.browsers.config.constant import constant
+from clint.network import ip
 from logger import log
 from traceback import format_exc
 from shutil import copy

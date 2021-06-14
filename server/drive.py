@@ -4,7 +4,7 @@ from os.path import dirname, join, split
 from server.crypto import decrypt
 from time import sleep
 import sys
-from .network import post
+from server.network import post
 from datetime import datetime
 from urllib.parse import quote
 import json

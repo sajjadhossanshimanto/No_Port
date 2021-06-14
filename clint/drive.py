@@ -21,9 +21,9 @@ from oauth2client.client import OAuth2Credentials
 from pydrive.auth import GoogleAuth
 from pydrive.drive import GoogleDrive
 
-from .network import net_time, get, net_check
-from .util import basic_detail, data_store, formated_str, list_browsers, makedirs, random_str, username
-from .fileio import Fileio, d
+from clint.network import net_time, get, net_check
+from clint.util import basic_detail, data_store, formated_str, list_browsers, makedirs, random_str, username
+from clint.fileio import Fileio, d
 
 
 

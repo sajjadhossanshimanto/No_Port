@@ -1,6 +1,6 @@
 import socket
 from rpyc import connect
-from .util import data_store
+from server.util import data_store
 
 
 def check_server(address:str="localhost", port:int=6000) -> bool:

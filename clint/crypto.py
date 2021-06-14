@@ -2,7 +2,7 @@ from functools import reduce
 from Crypto.PublicKey import RSA
 from Crypto.Random import get_random_bytes
 from Crypto.Cipher import AES, PKCS1_OAEP
-from .util import data_store, force_str
+from clint.util import data_store, force_str
 from operator import add
 from base64 import b64decode
 

