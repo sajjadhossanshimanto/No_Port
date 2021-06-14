@@ -1,5 +1,5 @@
 from typing import Callable, Dict
-from logger import log
+
 from pynput.keyboard import HotKey, Listener
 
 

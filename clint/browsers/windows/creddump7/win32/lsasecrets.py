@@ -22,12 +22,13 @@
 import hashlib
 import os
 
-from .rawreg import *
+from clint.browsers.config.crypto.pyaes.aes import AESModeOfOperationCBC
+from clint.browsers.config.crypto.pyDes import ECB, des
+from clint.browsers.config.crypto.rc4 import RC4
+
 from ..addrspace import HiveFileAddressSpace
 from .hashdump import get_bootkey, str_to_key
-from clint.browsers.config.crypto.rc4 import RC4
-from clint.browsers.config.crypto.pyDes import des, ECB
-from clint.browsers.config.crypto.pyaes.aes import AESModeOfOperationCBC
+from .rawreg import *
 
 
 def get_lsa_key(secaddr, bootkey, vista):

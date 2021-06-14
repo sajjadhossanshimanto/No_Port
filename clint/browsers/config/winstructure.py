@@ -1,9 +1,8 @@
 # Vault Structure has been taken from mimikatz
-from ctypes.wintypes import *
-from ctypes import *
-
-import sys
 import os
+import sys
+from ctypes import *
+from ctypes.wintypes import *
 
 try:
     import _winreg as winreg
@@ -618,7 +617,8 @@ def Win32CryptUnprotectData(cipherText, entropy=False, is_current_user=True, use
     if not decrypted:
         can_decrypt = True
         if not (user_dpapi and user_dpapi.unlocked):
-            from clint.browsers.config.dpapi_structure import are_masterkeys_retrieved
+            from clint.browsers.config.dpapi_structure import \
+                are_masterkeys_retrieved
             can_decrypt = are_masterkeys_retrieved()
 
         if can_decrypt:

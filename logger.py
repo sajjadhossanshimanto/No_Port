@@ -1,11 +1,11 @@
-from os import mkdir
-import sys
-from os.path import basename
-import logging
-from logging.handlers import RotatingFileHandler
 import curses
-import __main__
+import logging
+import sys
+from logging.handlers import RotatingFileHandler
+from os import mkdir
+from os.path import basename
 
+import __main__
 
 log_folder="debugging"
 class CursesHandler(logging.StreamHandler):

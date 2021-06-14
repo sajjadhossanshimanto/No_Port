@@ -23,11 +23,11 @@ import hmac
 import struct
 import sys
 
+from clint.browsers.config.crypto.pyaes.aes import (AESModeOfOperationCBC,
+                                                    AESModeOfOperationECB)
+from clint.browsers.config.crypto.pyDes import CBC, ECB, des, triple_des
 from clint.browsers.config.crypto.rc4 import RC4
-from clint.browsers.config.crypto.pyaes.aes import AESModeOfOperationCBC, AESModeOfOperationECB
-from clint.browsers.config.crypto.pyDes import triple_des, des, ECB, CBC
 from clint.browsers.config.winstructure import char_to_int, chr_or_byte
-
 
 try:
     xrange

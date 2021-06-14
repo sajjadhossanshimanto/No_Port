@@ -1,12 +1,12 @@
+import csv
+import ctypes
 import os
 import sys
-from subprocess import getoutput
-from logger import log
-from msvcrt import getch
-import ctypes
 from io import StringIO
-import csv
+from msvcrt import getch
+from subprocess import getoutput
 
+from logger import log
 
 script_path = 'start_bucket.vbs'
 bucket = "bucket.py"

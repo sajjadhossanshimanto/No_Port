@@ -1,11 +1,12 @@
+from base64 import b64decode
 from functools import reduce
+from operator import add
+
+from Crypto.Cipher import AES, PKCS1_OAEP
 from Crypto.PublicKey import RSA
 from Crypto.Random import get_random_bytes
-from Crypto.Cipher import AES, PKCS1_OAEP
-from clint.util import data_store, force_str
-from operator import add
-from base64 import b64decode
 
+from clint.util import data_store, force_str
 
 aes_key_size=16
 

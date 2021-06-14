@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import base64
 import json
+import logging
 import os
 import random
 import shutil
@@ -12,7 +13,6 @@ import traceback
 from Crypto.Cipher import AES
 
 from clint.browsers.config.constant import constant
-import logging
 from clint.browsers.config.winstructure import Win32CryptUnprotectData
 from clint.browsers.windows.credman import Credman
 

@@ -8,14 +8,12 @@ Code based from these two awesome projects:
 """
 
 import codecs
-import struct
+import os
+
+from clint.browsers.config.crypto.pyaes.aes import AESModeOfOperationCBC
 
 from .blob import DPAPIBlob
-from .eater import DataStruct, Eater
-from clint.browsers.config.crypto.pyaes.aes import AESModeOfOperationCBC
-from clint.browsers.config.winstructure import char_to_int
-
-import os
+from .eater import DataStruct
 
 AES_BLOCK_SIZE = 16
 

@@ -7,8 +7,8 @@ Code based from these two awesome projects:
 - DPAPILAB 	: https://github.com/dfirfpi/dpapilab
 """
 
-import struct
 import hashlib
+import struct
 
 from . import crypto
 from .eater import DataStruct

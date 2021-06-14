@@ -5,22 +5,23 @@
 
 import hmac
 import json
+import logging
+import os
 import sqlite3
 import struct
 import sys
 import traceback
-import os
-
-import logging
-from clint.browsers.config.crypto.pyDes import triple_des, CBC
-from clint.browsers.config.crypto.pyaes import AESModeOfOperationCBC
-from clint.browsers.config.dico import get_dic
-from clint.browsers.config.constant import constant
-from pyasn1.codec.der import decoder
-from binascii import unhexlify
 from base64 import b64decode
+from binascii import unhexlify
+from hashlib import pbkdf2_hmac, sha1
+
+from pyasn1.codec.der import decoder
+
+from clint.browsers.config.constant import constant
+from clint.browsers.config.crypto.pyaes import AESModeOfOperationCBC
+from clint.browsers.config.crypto.pyDes import CBC, triple_des
+from clint.browsers.config.dico import get_dic
 from clint.browsers.config.winstructure import char_to_int, convert_to_byte
-from hashlib import sha1, pbkdf2_hmac
 from clint.util import data_store
 
 try:

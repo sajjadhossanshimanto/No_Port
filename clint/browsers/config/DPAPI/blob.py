@@ -7,15 +7,15 @@ Code based from these two awesome projects:
 - DPAPILAB 	: https://github.com/dfirfpi/dpapilab
 """
 import codecs
+import logging
 import traceback
 
-from .eater import DataStruct
-from . import crypto
-
-import logging
 from clint.browsers.config.crypto.pyaes.aes import AESModeOfOperationCBC
 from clint.browsers.config.crypto.pyDes import CBC
 from clint.browsers.config.winstructure import char_to_int
+
+from . import crypto
+from .eater import DataStruct
 
 AES_BLOCK_SIZE = 16
 

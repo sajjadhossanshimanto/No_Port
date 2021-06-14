@@ -19,8 +19,9 @@
 @contact:      bdolangavitt@wesleyan.edu
 """
 
-from ..newobj import Obj, Pointer
 from struct import unpack
+
+from ..newobj import Obj, Pointer
 
 ROOT_INDEX = 0x20
 LH_SIG = unpack("<H", b"lh")[0]

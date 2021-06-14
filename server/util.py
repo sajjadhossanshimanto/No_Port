@@ -1,12 +1,11 @@
 #%%
-from functools import cached_property
+import ctypes
 import os
-from json.decoder import JSONDecodeError, JSONDecoder, WHITESPACE
-from threading import Event
+from functools import cached_property
+from json.decoder import WHITESPACE, JSONDecodeError, JSONDecoder
+
 from clint.util import permanent as _perm
 from logger import log
-import ctypes
-
 
 decoder=JSONDecoder()
 _w=WHITESPACE.match

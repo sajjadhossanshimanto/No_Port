@@ -1,9 +1,9 @@
 import hashlib
+import logging
 import subprocess
 import traceback
 
 import clint.browsers.config.winstructure as win
-import logging
 from clint.browsers.config.constant import constant
 
 try: 

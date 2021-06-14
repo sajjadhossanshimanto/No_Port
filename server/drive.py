@@ -1,22 +1,20 @@
 #%%
-from base64 import b64decode
-from os.path import dirname, join, split
-from server.crypto import decrypt
-from time import sleep
-import sys
-from server.network import post
-from datetime import datetime
-from urllib.parse import quote
 import json
-import os
+import sys
+from os.path import join, split
+from time import sleep
+from urllib.parse import quote
 
-from server.util import data_store, str_to_json
-from logger import log
-from clint.drive import Online, drive_explorer as DE, Drive
-
+from clint.drive import Drive, Online
+from clint.drive import drive_explorer as DE
 from clint.util import formated_str
+from logger import log
+from server.crypto import decrypt
+from server.network import post
+from server.util import data_store, str_to_json
+
 try:
-    from setting import (client_secret, client_id, host_rtoken, source_rtoken, host_email)
+    from setting import host_rtoken, source_rtoken
 except ImportError:
     raise Exception("Unsecure modification was made to setting")
 

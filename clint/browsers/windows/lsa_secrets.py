@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*- 
 import struct
 
-from .creddump7.win32.lsasecrets import get_file_secrets
-import logging
-from clint.browsers.config.winstructure import get_os_version
 from clint.browsers.config.constant import constant
+from clint.browsers.config.winstructure import get_os_version
+
+from .creddump7.win32.lsasecrets import get_file_secrets
 
 
 class LSASecrets:

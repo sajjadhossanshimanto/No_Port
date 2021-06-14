@@ -1,6 +1,5 @@
-from .config.users import set_env_variables, get_username_winapi
 from .config.constant import constant
-
+from .config.users import get_username_winapi, set_env_variables
 
 # def user_impersonation():
 constant.is_current_user = True

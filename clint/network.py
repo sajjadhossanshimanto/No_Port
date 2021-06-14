@@ -1,14 +1,13 @@
 #%%
-from functools import lru_cache
-from socket import create_connection, gaierror, gethostbyname, gethostname
-from threading import Thread, Event
-import ntplib
-from time import sleep, time
-from requests import get as _get
 import sys
-import traceback
-from logger import log
+from socket import create_connection, gaierror, gethostbyname, gethostname
+from threading import Event, Thread
+from time import sleep, time
 
+import ntplib
+from requests import get as _get
+
+from logger import log
 
 compiled=getattr(sys, "frozen", False) # check if app is being compiled by cx_freeze
 

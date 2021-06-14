@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 # !/usr/bin/python
-import os
 import ctypes
+import os
 import sys
 
-from clint.browsers.config.winstructure import get_os_version
 from clint.browsers.config.constant import constant
+from clint.browsers.config.winstructure import get_os_version
 
 
 def get_user_list_on_filesystem(impersonated_user=[]):

@@ -7,18 +7,18 @@ Code based from these two awesome projects:
 - DPAPILAB : https://github.com/dfirfpi/dpapilab
 """
 
-from . import crypto
-from .credhist import CredHistFile
-from .system import CredSystem
-from .eater import DataStruct, Eater
-from collections import defaultdict
-
 import codecs
 import hashlib
-import struct
 import os
+import struct
+from collections import defaultdict
 
 from clint.browsers.config.constant import constant
+
+from . import crypto
+from .credhist import CredHistFile
+from .eater import DataStruct
+from .system import CredSystem
 
 
 class MasterKey(DataStruct):

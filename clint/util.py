@@ -1,22 +1,19 @@
 #%%
+import codecs
 import json
 import os
-from os.path import join, exists
 import pickle
-from functools import cached_property, lru_cache
-from pprint import PrettyPrinter
-from threading import Event
-import threading
-import ctypes
-import codecs
 import winreg
+from functools import cached_property, lru_cache
+from os.path import exists, join
+from pprint import PrettyPrinter
+from shutil import copy
+from threading import Event
+from traceback import format_exc
 
 from clint.browsers.config.constant import constant
 from clint.network import ip
 from logger import log
-from traceback import format_exc
-from shutil import copy
-
 
 username=constant.username
 def formated_str(data):

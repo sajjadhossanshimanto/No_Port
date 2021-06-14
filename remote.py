@@ -1,11 +1,13 @@
 #%%
-from msvcrt import getch
+import atexit
+import os
 import sys
 import threading
+from msvcrt import getch
 from traceback import format_exception
-import os
-import atexit
+
 from logger import log, report_file
+
 
 def on_exception(etype, value, tb):
     full_tb=format_exception(etype, value, tb)
@@ -31,12 +33,11 @@ threading.excepthook=thread_exception
 #%%
 from io import StringIO
 from time import sleep
-from server.drive import drive_file, move_file, source_drive, source_file, validate_cred, drive
-from server.util import data_store, str_to_json, validate_command_syntax
-from server.util import str_to_json
-from server.bucket_running import is_bucket_runnnig
-from server.startup import script_path, task_startup, is_admin
 
+from server.bucket_running import is_bucket_runnnig
+from server.drive import drive, drive_file, source_drive, validate_cred
+from server.startup import is_admin, script_path, task_startup
+from server.util import data_store, validate_command_syntax
 
 #%%
 validate_cred()
@@ -78,6 +79,7 @@ if source_drive.trashed_files() or drive.trashed_files():
 
 
 #%%
-from server.tui import home_page # inits curses handler
+from server.tui import home_page  # inits curses handler
+
 home_page.show()
 

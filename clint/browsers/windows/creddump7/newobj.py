@@ -19,10 +19,11 @@
 @contact:      bdolangavitt@wesleyan.edu
 """
 
-from .object import *
-from .types import regtypes as types
 from operator import itemgetter
 from struct import unpack
+
+from .object import *
+from .types import regtypes as types
 
 
 def get_ptr_type(structure, member):

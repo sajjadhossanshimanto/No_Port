@@ -1,5 +1,6 @@
-from clint.network import *
 from requests import post as _post
+
+from clint.network import *
 
 
 def post(*args, **kwargs):
