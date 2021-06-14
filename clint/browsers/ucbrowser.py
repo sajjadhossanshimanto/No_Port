@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 import os
 
-from .config.constant import constant
-from .chromium_based import ChromiumBased
+from clint.browsers.config.constant import constant
+import logging
+from clint.browsers.chromium_based import ChromiumBased
 
 
 class UCBrowser(ChromiumBased):
@@ -18,5 +19,3 @@ class UCBrowser(ChromiumBased):
         except Exception:
             self.paths = []
         return ChromiumBased._get_database_dirs(self)
-
-uc=UCBrowser()

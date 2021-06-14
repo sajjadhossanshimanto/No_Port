@@ -1,12 +1,11 @@
 from itertools import chain
 from .chromium_based import chromium_browsers
-from .mozilla import firefox
-from .ucbrowser import uc
-from .ie import internet_explorer
+from .mozilla import firefox_browsers
+from .ucbrowser import UCBrowser
+from .ie import IE
 
 def run():
-    browsers=[firefox, uc, internet_explorer]
-    for i in chain(browsers, chromium_browsers):
+    for i in chain(chromium_browsers, firefox_browsers, [UCBrowser(), IE()]):
         pas = i.run()
         if pas:
             yield pas

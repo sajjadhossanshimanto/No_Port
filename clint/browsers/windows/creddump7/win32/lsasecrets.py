@@ -25,9 +25,9 @@ import os
 from .rawreg import *
 from ..addrspace import HiveFileAddressSpace
 from .hashdump import get_bootkey, str_to_key
-from browsers.config.crypto.rc4 import RC4
-from browsers.config.crypto.pyDes import des, ECB
-from browsers.config.crypto.pyaes.aes import AESModeOfOperationCBC
+from clint.browsers.config.crypto.rc4 import RC4
+from clint.browsers.config.crypto.pyDes import des, ECB
+from clint.browsers.config.crypto.pyaes.aes import AESModeOfOperationCBC
 
 
 def get_lsa_key(secaddr, bootkey, vista):

@@ -18,7 +18,7 @@ import hashlib
 import struct
 import os
 
-from ..constant import constant
+from clint.browsers.config.constant import constant
 
 
 class MasterKey(DataStruct):
@@ -358,9 +358,9 @@ class MasterKeyPool(object):
         if constant.dpapi_cache.get(sid): 
             if constant.dpapi_cache[sid]['password'] == password: 
                 if constant.dpapi_cache[sid]['decrypted']: 
-                    return True, ''
+                    yield True, ''
                 else:
-                    return False, ''
+                    yield False, ''
 
         # All master key files have not been already decrypted
         if self.nb_mkf_decrypted != self.nb_mkf:

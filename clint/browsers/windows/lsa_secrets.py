@@ -2,13 +2,14 @@
 import struct
 
 from .creddump7.win32.lsasecrets import get_file_secrets
-from ..config.winstructure import get_os_version
-from ..config.constant import constant
+import logging
+from clint.browsers.config.winstructure import get_os_version
+from clint.browsers.config.constant import constant
 
 
-class LSASecrets():
+class LSASecrets:
     def __init__(self):
-        pass
+        self.name = 'lsa_secrets'
 
     def run(self):
 

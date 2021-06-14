@@ -8,11 +8,12 @@ Code based from these two awesome projects:
 """
 
 import codecs
+import struct
 
 from .blob import DPAPIBlob
 from .eater import DataStruct, Eater
-from ..crypto.pyaes.aes import AESModeOfOperationCBC
-from ..winstructure import char_to_int
+from clint.browsers.config.crypto.pyaes.aes import AESModeOfOperationCBC
+from clint.browsers.config.winstructure import char_to_int
 
 import os
 

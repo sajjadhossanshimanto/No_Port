@@ -1,7 +1,7 @@
 # Thanks to g2jun for his RC4-Python project
 # Code from https://github.com/g2jun/RC4-Python
 
-from ..winstructure import char_to_int, chr_or_byte
+from clint.browsers.config.winstructure import char_to_int, chr_or_byte
 
 
 class RC4(object):

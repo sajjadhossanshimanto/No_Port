@@ -4,8 +4,8 @@ import os
 import ctypes
 import sys
 
-from .winstructure import get_os_version
-from .constant import constant
+from clint.browsers.config.winstructure import get_os_version
+from clint.browsers.config.constant import constant
 
 
 def get_user_list_on_filesystem(impersonated_user=[]):

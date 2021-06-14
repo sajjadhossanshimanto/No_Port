@@ -12,10 +12,10 @@ import traceback
 from .eater import DataStruct
 from . import crypto
 
-from logger import log
-from ..crypto.pyaes.aes import AESModeOfOperationCBC
-from ..crypto.pyDes import CBC
-from ..winstructure import char_to_int
+import logging
+from clint.browsers.config.crypto.pyaes.aes import AESModeOfOperationCBC
+from clint.browsers.config.crypto.pyDes import CBC
+from clint.browsers.config.winstructure import char_to_int
 
 AES_BLOCK_SIZE = 16
 
@@ -111,7 +111,7 @@ class DPAPIBlob(DataStruct):
                 if self.decrypted:
                     return True
             except Exception:
-                log.critacal(traceback.format_exc())
+                logging.debug('DEBUG', traceback.format_exc())
 
         self.decrypted = False
         return self.decrypted

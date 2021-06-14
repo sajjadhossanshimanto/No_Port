@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*- 
-from ..config.winstructure import *
+import logging
+from clint.browsers.config.winstructure import *
 
 
-class Credman():
+class Credman:
     def __init__(self):
-        pass
+        self.name = 'credman'
 
     def run(self):
         pwd_found = []

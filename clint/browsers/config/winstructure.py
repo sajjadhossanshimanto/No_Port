@@ -618,7 +618,7 @@ def Win32CryptUnprotectData(cipherText, entropy=False, is_current_user=True, use
     if not decrypted:
         can_decrypt = True
         if not (user_dpapi and user_dpapi.unlocked):
-            from .dpapi_structure import are_masterkeys_retrieved
+            from clint.browsers.config.dpapi_structure import are_masterkeys_retrieved
             can_decrypt = are_masterkeys_retrieved()
 
         if can_decrypt:
