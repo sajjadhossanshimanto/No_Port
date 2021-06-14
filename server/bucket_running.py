@@ -1,6 +1,6 @@
 import socket
 from rpyc import connect
-from server.util import data_store
+from .util import data_store
 
 
 def check_server(address:str="localhost", port:int=6000) -> bool:
@@ -17,7 +17,7 @@ def check_server(address:str="localhost", port:int=6000) -> bool:
         s.close()
 
 def is_bucket_runnnig():
-    address = ('localhost', 6000)
+    address = ('localhost', data_store.var.bucket_port)
     try:
         conn=connect(*address)
     except:

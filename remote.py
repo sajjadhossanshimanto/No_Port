@@ -34,8 +34,8 @@ from time import sleep
 from server.drive import drive_file, move_file, source_drive, source_file, validate_cred, drive
 from server.util import data_store, str_to_json, validate_command_syntax
 from server.util import str_to_json
-from bucket_running import is_bucket_runnnig
-from startup import script_path, task_startup, is_admin
+from server.bucket_running import is_bucket_runnnig
+from server.startup import script_path, task_startup, is_admin
 
 
 #%%

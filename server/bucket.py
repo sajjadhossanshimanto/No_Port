@@ -13,11 +13,16 @@ from plyer import notification
 from rpyc import Service
 from rpyc.utils.server import ThreadedServer
 
-from clint.network import net_time
+
+if "clint" not in sys.modules:
+    sys.path[0]+= "/../"
+    __import__('clint')
+    __import__('server')
+
+from server.network import net_time
 from server.drive import source_drive
 from server.util import data_store
-from bucket_running import is_bucket_runnnig
-
+from server.bucket_running import is_bucket_runnnig
 
 port=data_store.var.bucket_port
 interval_m=data_store.var.safety_interval# interval in minutes
